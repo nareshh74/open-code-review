@@ -570,6 +570,13 @@ func (p *acpProcess) handleServerMessage(state *acpProtocolState, envelope acpWi
 				return fmt.Errorf("%s content type is %q, want text", params.Update.Kind, content.Type)
 			}
 			if params.Update.Kind == "agent_message_chunk" {
+				// With a tool allowlist the CLI streams its own notices ("Info:
+				// Disabled tools: ...") as message chunks before the model's
+				// reply. The reply contract starts with "{", so a leading notice
+				// is never model output.
+				if state.text.Len() == 0 && strings.HasPrefix(content.Text, copilotACPNoticePrefix) {
+					return nil
+				}
 				return state.appendText(content.Text)
 			}
 			return state.appendReasoning(content.Text)
