@@ -701,6 +701,10 @@ func TestCopilotACPHelperProcess(t *testing.T) {
 			}
 			reply := helperReply(params.Prompt[0].Text)
 			midpoint := len(reply) / 2
+			// Copilot CLI 1.0.92 streams these notices as message chunks
+			// when --available-tools is set.
+			writeHelperUpdate(sessionID, "agent_message_chunk", "Info: Disabled tools: glob, powershell, skill, view")
+			writeHelperUpdate(sessionID, "agent_message_chunk", `Info: Unknown tool name in the tool allowlist: "ocr-no-native-tools"`)
 			writeHelperUpdate(sessionID, "agent_thought_chunk", "reason")
 			writeHelperUpdate(sessionID, "agent_thought_chunk", "ing")
 			writeHelperUpdate(sessionID, "agent_message_chunk", reply[:midpoint])
@@ -794,4 +798,12 @@ func writeHelperMethods(path string, methods []string) {
 	}
 	data, _ := json.Marshal(methods)
 	_ = os.WriteFile(path, data, 0o600)
+}
+
+func TestNewCopilotACPClientDisablesNativeTools(t *testing.T) {
+	client := newCopilotACPClient(ClientConfig{Model: "auto"})
+	want := []string{"--no-auto-update", "--acp", "--stdio", "--available-tools=ocr-no-native-tools"}
+	if strings.Join(client.args, " ") != strings.Join(want, " ") {
+		t.Fatalf("args = %q, want %q", client.args, want)
+	}
 }

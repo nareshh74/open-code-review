@@ -794,9 +794,7 @@ func (m providerTUIModel) updateCustomModelInput(key string, msg tea.KeyPressMsg
 		m.customModel = false
 		m.modelInput.Blur()
 		m.modelInput.SetValue("")
-		// Reposition the cursor on the first newly-added model so the user
-		// can see what just landed.
-		m.refreshModelSelectionForCustom()
+		m.refreshModelSelectionForCustom(name)
 		return m, nil
 	default:
 		var cmd tea.Cmd
@@ -924,15 +922,17 @@ func (m *providerTUIModel) beginManualTokenReplace() {
 	m.manualTokenInput.SetValue("")
 }
 
-// refreshModelSelectionForCustom moves the cursor to "Enter custom model name..."
-// after the user adds models via the input field.
-func (m *providerTUIModel) refreshModelSelectionForCustom() {
-	models := m.models()
+// refreshModelSelectionForCustom moves the cursor onto the model the user just
+// added. Landing on "Enter custom model name..." instead would make Enter reopen
+// the input, so a provider without preset models could never be confirmed.
+func (m *providerTUIModel) refreshModelSelectionForCustom(name string) {
 	m.modelIdx = 0
-	if len(models) == 0 {
-		return
+	for i, model := range m.models() {
+		if model == name {
+			m.modelIdx = i
+			return
+		}
 	}
-	m.modelIdx = len(models) // land on "Enter custom model name..."
 }
 
 func officialProviderEnvKeySet(p llm.Provider) bool {

@@ -20,6 +20,10 @@ import (
 const (
 	copilotACPReplyVersion   = 1
 	copilotACPDefaultTimeout = 5 * time.Minute
+	// copilotACPNoToolsSentinel is deliberately not a Copilot tool name. An
+	// empty --available-tools value is ignored by the CLI.
+	copilotACPNoToolsSentinel = "ocr-no-native-tools"
+	copilotACPNoticePrefix    = "Info: "
 )
 
 type copilotACPClient struct {
@@ -40,8 +44,11 @@ func newCopilotACPClient(cfg ClientConfig) *copilotACPClient {
 	return &copilotACPClient{
 		cfg:     cfg,
 		command: command,
-		args:    []string{"--no-auto-update", "--acp", "--stdio"},
-		env:     copilotACPEnvironment(),
+		// An allowlist naming no real tool leaves the agent with no native tools.
+		// Denying permission requests alone is not enough: the CLI runs tools
+		// such as "skill" without asking, which surfaces as a tool_call update.
+		args: []string{"--no-auto-update", "--acp", "--stdio", "--available-tools=" + copilotACPNoToolsSentinel},
+		env:  copilotACPEnvironment(),
 	}
 }
 
