@@ -23,7 +23,7 @@ type preset struct {
 	BaseURL     string   `json:"baseUrl"`
 	AuthHeader  string   `json:"authHeader,omitempty"`
 	EnvVar      string   `json:"envVar"`
-	AmbientAuth bool     `json:"ambientAuth,omitempty"`
+	Credentials string   `json:"credentials"`
 	Models      []string `json:"models"`
 }
 
@@ -116,7 +116,7 @@ func render(providers []llm.Provider) ([]byte, error) {
 			BaseURL:     p.BaseURL,
 			AuthHeader:  p.AuthHeader,
 			EnvVar:      p.EnvVar,
-			AmbientAuth: p.AmbientAuth,
+			Credentials: string(llm.CredentialSourceForProtocol(p.Protocol)),
 			Models:      models,
 		})
 	}

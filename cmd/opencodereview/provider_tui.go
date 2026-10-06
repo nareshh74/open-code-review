@@ -998,9 +998,7 @@ func (m providerTUIModel) apiKeyStepCanConfirm() (ok bool, errMsg string) {
 	}
 	if m.activeTab == tabOfficial {
 		p := m.currentProvider()
-		if p.AmbientAuth {
-			// Reachable when an existing config is edited: an empty key is the
-			// correct state for a provider that signs from the AWS chain.
+		if llm.CredentialSourceForProtocol(p.Protocol) != llm.CredentialAPIKey {
 			return true, ""
 		}
 		if officialProviderEnvKeySet(p) {
@@ -1869,10 +1867,8 @@ func (m providerTUIModel) handleEnter() (tea.Model, tea.Cmd) {
 			m.formError = err.Error()
 			return m, nil
 		}
-		if m.activeTab == tabOfficial && m.currentProvider().AmbientAuth {
-			// An ambient-auth provider has no key to collect, so the model step
-			// is the last one. Showing an API-key prompt that must be left blank
-			// would read as a step the user failed to complete.
+		if m.activeTab == tabOfficial &&
+			llm.CredentialSourceForProtocol(m.currentProvider().Protocol) != llm.CredentialAPIKey {
 			m.formError = ""
 			m.confirmed = true
 			return m, tea.Quit

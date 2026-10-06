@@ -2761,11 +2761,7 @@ func TestApplyCustomProviderConfigNormalizesAuthHeader(t *testing.T) {
 
 // --- protocol normalization / openai-responses support ---
 
-func TestCpProtocols_ContainsAllCanonicalNames(t *testing.T) {
-	// The Custom form offers every canonical protocol, in canonical order, so
-	// result() picks up the right string for each index. The Manual form writes
-	// llm.url + llm.auth_token and so omits bedrock, which uses neither; the two
-	// lists share their prefix, which is what keeps a single index helper honest.
+func TestCpProtocols_ContainsCustomProviderProtocols(t *testing.T) {
 	want := []string{
 		llm.ProtocolAnthropic,
 		llm.ProtocolOpenAIChatCompletions,
@@ -2793,6 +2789,11 @@ func TestCpProtocols_ContainsAllCanonicalNames(t *testing.T) {
 	for _, p := range manualProtocols {
 		if p == llm.ProtocolAnthropicBedrock {
 			t.Error("manualProtocols offers bedrock; the llm block has no region, profile or use for its url and token")
+		}
+	}
+	for _, p := range cpProtocols {
+		if p == llm.ProtocolCopilotACP {
+			t.Error("cpProtocols offers copilot-acp; this process transport is built-in-only")
 		}
 	}
 }

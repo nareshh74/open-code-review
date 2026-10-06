@@ -74,13 +74,11 @@ func checkPresets(data []byte, providers []llm.Provider) error {
 			{"baseUrl", actual.BaseURL, provider.BaseURL},
 			{"authHeader", actual.AuthHeader, provider.AuthHeader},
 			{"envVar", actual.EnvVar, provider.EnvVar},
+			{"credentials", actual.Credentials, string(llm.CredentialSourceForProtocol(provider.Protocol))},
 		} {
 			if field.actual != field.want {
 				return fmt.Errorf("%s for provider %q is %q, want %q", field.name, provider.Name, field.actual, field.want)
 			}
-		}
-		if actual.AmbientAuth != provider.AmbientAuth {
-			return fmt.Errorf("ambientAuth for provider %q is %t, want %t", provider.Name, actual.AmbientAuth, provider.AmbientAuth)
 		}
 	}
 	return nil
@@ -121,8 +119,8 @@ func decodePresets(data []byte) ([]preset, error) {
 			{"baseUrl", true, &actual.BaseURL},
 			{"envVar", true, &actual.EnvVar},
 			{"models", true, &models},
+			{"credentials", true, &actual.Credentials},
 			{"authHeader", false, &actual.AuthHeader},
-			{"ambientAuth", false, &actual.AmbientAuth},
 		} {
 			value, exists := record[field.name]
 			if !exists {

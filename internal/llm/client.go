@@ -5,6 +5,7 @@
 // Supported protocols (canonical names, see protocol.go):
 //   - "anthropic" — Anthropic Messages API
 //   - "anthropic-bedrock" — the same API served by AWS Bedrock, SigV4-signed
+//   - "copilot-acp" — GitHub Copilot CLI over Agent Client Protocol stdio
 //   - "openai" — OpenAI Chat Completions API
 //   - "openai-responses" — OpenAI Responses API
 package llm
@@ -467,6 +468,8 @@ func retryCodesMiddleware(codes []int) func(*http.Request, func(*http.Request) (
 // protocol dispatch (canonical names from protocol.go):
 //   - ProtocolAnthropic ("anthropic") -> AnthropicClient
 //   - ProtocolOpenAIResponses ("openai-responses") -> OpenAIResponsesClient
+//   - ProtocolCopilotACP ("copilot-acp") -> copilotACPClient
+//   - ProtocolCopilotAPI ("copilot-api") -> copilotAPIClient
 //   - ProtocolOpenAIChatCompletions ("openai") or anything else -> OpenAIClient
 //
 // The defensive default keeps legacy callers that somehow bypass resolver
@@ -500,6 +503,10 @@ func NewLLMClient(ep ResolvedEndpoint, collector *RetryCollector, raw *RawHolder
 		return NewAnthropicBedrockClient(cfg)
 	case ProtocolOpenAIResponses:
 		return NewOpenAIResponsesClient(cfg)
+	case ProtocolCopilotACP:
+		return newCopilotACPClient(cfg)
+	case ProtocolCopilotAPI:
+		return newCopilotAPIClient(cfg)
 	default:
 		return NewOpenAIClient(cfg)
 	}

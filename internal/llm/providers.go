@@ -17,6 +17,8 @@ import (
 //   - ProtocolOpenAIChatCompletions ("openai")
 //   - ProtocolOpenAIResponses ("openai-responses")
 //   - ProtocolAnthropicBedrock ("anthropic-bedrock")
+//   - ProtocolCopilotACP ("copilot-acp")
+//   - ProtocolCopilotAPI ("copilot-api")
 //
 // To add a built-in provider that speaks a different protocol, set Protocol
 // accordingly and ensure NewLLMClient has a matching case.
@@ -28,13 +30,6 @@ type Provider struct {
 	AuthHeader  string // Anthropic-only; empty for OpenAI-compatible
 	EnvVar      string // environment variable name for API key fallback
 	Models      []string
-
-	// AmbientAuth marks a provider whose credentials come from the
-	// environment's own chain rather than an api_key — AWS SigV4, for
-	// instance. The resolver skips its api_key requirement for these, because
-	// there is no key to configure and demanding one would make the provider
-	// impossible to use.
-	AmbientAuth bool
 }
 
 // After modifying the built-in provider registry, run `go generate ./internal/llm`
@@ -72,7 +67,6 @@ var registry = []Provider{
 		Name:        "bedrock",
 		DisplayName: "AWS Bedrock (Anthropic models)",
 		Protocol:    ProtocolAnthropicBedrock,
-		AmbientAuth: true,
 		Models: []string{
 			"us.anthropic.claude-opus-5",
 			"us.anthropic.claude-sonnet-5",
@@ -83,6 +77,49 @@ var registry = []Provider{
 			"global.anthropic.claude-sonnet-5",
 			"global.anthropic.claude-opus-4-8",
 		},
+	},
+	{
+		Name:        "copilot-acp",
+		DisplayName: "GitHub Copilot CLI (ACP)",
+		Protocol:    ProtocolCopilotACP,
+		Models: []string{
+			"auto",
+			"claude-sonnet-5",
+			"claude-opus-5.5",
+			"claude-opus-5",
+			"claude-opus-4.8",
+			"claude-haiku-4.5",
+			"gpt-6.1-sol",
+			"gpt-6-sol",
+			"gpt-6-luna",
+			"gpt-6-astra",
+			"gpt-5.6-sol",
+			"gpt-5.6-sol-fast",
+			"gpt-5.6-terra",
+			"gpt-5.6-luna",
+			"gpt-5.5",
+			"gpt-5.4",
+			"gpt-5.4-mini",
+			"gpt-5.3-codex",
+			"gpt-5-mini",
+			"mai-code-1.1-flash",
+			"gemini-3.8-flash",
+			"gemini-3.7-flash",
+			"grok-4.5",
+			"claude-sonnet-5.5",
+			"grok-4.6",
+			"grok-4.7",
+		},
+	},
+	{
+		// Experimental: Copilot endpoint discovery and the completion service
+		// are private, undocumented GitHub interfaces. BaseURL is the GitHub
+		// API; set url to https://api.<tenant>.ghe.com for GHE.com accounts.
+		Name:        "copilot-api",
+		DisplayName: "GitHub Copilot API (experimental)",
+		Protocol:    ProtocolCopilotAPI,
+		BaseURL:     copilotAPIDefaultGitHubURL,
+		EnvVar:      "COPILOT_GITHUB_TOKEN",
 	},
 	{
 		Name:        "openai",

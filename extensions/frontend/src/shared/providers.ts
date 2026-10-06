@@ -9,11 +9,11 @@ export { PROVIDER_PRESETS };
 export interface OcrProviderPreset {
   name: string;
   displayName: string;
-  protocol: 'anthropic' | 'openai' | 'openai-responses' | 'anthropic-bedrock';
+  protocol: 'anthropic' | 'openai' | 'openai-responses' | 'anthropic-bedrock' | 'copilot-acp' | 'copilot-api';
   baseUrl: string;
   authHeader?: string;
   envVar: string;
-  ambientAuth?: boolean;
+  credentials: 'api-key' | 'aws' | 'copilot-cli';
   models: string[];
 }
 
@@ -27,10 +27,10 @@ export function isPresetProvider(name: string): boolean {
   return presetMap.has(name.trim().toLowerCase());
 }
 
-export function usesAmbientAuth(preset: OcrProviderPreset, protocolOverride?: string): boolean {
+export function requiresApiKey(preset: OcrProviderPreset, protocolOverride?: string): boolean {
   const protocol = protocolOverride?.trim().toLowerCase();
-  if (protocol) return protocol === 'anthropic-bedrock';
-  return preset.protocol === 'anthropic-bedrock' || preset.ambientAuth === true;
+  if (protocol) return protocol !== 'anthropic-bedrock' && protocol !== 'copilot-acp';
+  return preset.credentials === 'api-key';
 }
 
 export function mergeModelLists(...lists: string[][]): string[] {

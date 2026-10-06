@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1405,10 +1406,17 @@ func TestResolveEndpointWithModelOverride_AllBuiltInProvidersAcceptUnlistedModel
 	const model = "unlisted-model-for-test"
 	for _, provider := range ListProviders() {
 		t.Run(provider.Name, func(t *testing.T) {
+			entry := providerEntryConfig{}
+			switch CredentialSourceForProtocol(provider.Protocol) {
+			case CredentialAPIKey:
+				entry.APIKey = "test-key"
+			case CredentialAWS:
+				entry.AWSRegion = "us-west-2"
+			}
 			path, _ := writeResolverConfig(t, configFile{
 				Provider: provider.Name,
 				Providers: map[string]providerEntryConfig{
-					provider.Name: {APIKey: "test-key", AWSRegion: "us-west-2"},
+					provider.Name: entry,
 				},
 			})
 			var ep ResolvedEndpoint
@@ -1419,10 +1427,152 @@ func TestResolveEndpointWithModelOverride_AllBuiltInProvidersAcceptUnlistedModel
 			if err != nil || ep.Model != model || ep.Provider != provider.Name {
 				t.Fatalf("endpoint = %+v, error = %v", ep, err)
 			}
+			if len(provider.Models) == 0 {
+				// No suggestions means nothing to compare the override against.
+				if stderr != "" {
+					t.Errorf("stderr = %q, want none for empty preset list", stderr)
+				}
+				return
+			}
 			if strings.Count(stderr, "[ocr] WARNING: model") != 1 || !strings.Contains(stderr, fmt.Sprintf("for provider %q", provider.Name)) {
 				t.Errorf("stderr = %q, want one warning for %s", stderr, provider.Name)
 			}
 		})
+	}
+}
+
+func TestResolveEndpoint_CopilotACPUsesCLIOwnedCredentials(t *testing.T) {
+	clearAllEnv(t)
+	path, _ := writeResolverConfig(t, configFile{
+		Provider: "copilot-acp",
+		Providers: map[string]providerEntryConfig{
+			"copilot-acp": {Model: "gpt-5.6-sol"},
+		},
+	})
+	ep, err := ResolveEndpoint(path)
+	if err != nil {
+		t.Fatalf("ResolveEndpoint: %v", err)
+	}
+	want := ResolvedEndpoint{
+		Model:       "gpt-5.6-sol",
+		Provider:    "copilot-acp",
+		Protocol:    ProtocolCopilotACP,
+		Source:      "provider:copilot-acp",
+		Credentials: CredentialCopilotCLI,
+	}
+	if !reflect.DeepEqual(ep, want) {
+		t.Errorf("endpoint = %#v, want %#v", ep, want)
+	}
+}
+
+func TestResolveEndpoint_CopilotACPRejectsHTTPAndAWSConfiguration(t *testing.T) {
+	clearAllEnv(t)
+	tests := []struct {
+		name  string
+		entry providerEntryConfig
+		want  string
+	}{
+		{"api key", providerEntryConfig{APIKey: "secret"}, "does not accept api_key"},
+		{"key command", providerEntryConfig{APIKeyCmd: "echo secret"}, "does not accept api_key_cmd"},
+		{"URL", providerEntryConfig{URL: "https://example.com"}, "does not accept url"},
+		{"auth header", providerEntryConfig{AuthHeader: "authorization"}, "does not accept auth_header"},
+		{"extra body", providerEntryConfig{ExtraBody: map[string]any{"x": 1}}, "does not accept extra_body"},
+		{"extra headers", providerEntryConfig{ExtraHeaders: map[string]string{"X-Test": "1"}}, "does not accept extra_headers"},
+		{"retry codes", providerEntryConfig{RetryCodes: []int{429}}, "does not accept retry_codes"},
+		{"AWS", providerEntryConfig{AWSRegion: "us-west-2"}, "does not accept aws_profile or aws_region"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.entry.Model = "gpt-5.6-sol"
+			path, _ := writeResolverConfig(t, configFile{
+				Provider: "copilot-acp",
+				Providers: map[string]providerEntryConfig{
+					"copilot-acp": test.entry,
+				},
+			})
+			_, err := ResolveEndpoint(path)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want substring %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestResolveEndpoint_CopilotAPIUsesGitHubCredentialEnv(t *testing.T) {
+	clearAllEnv(t)
+	t.Setenv("COPILOT_GITHUB_TOKEN", " gho_env ")
+	path, _ := writeResolverConfig(t, configFile{
+		Provider:  "copilot-api",
+		Providers: map[string]providerEntryConfig{"copilot-api": {Model: "m"}},
+	})
+	ep, err := ResolveEndpoint(path)
+	if err != nil {
+		t.Fatalf("ResolveEndpoint: %v", err)
+	}
+	if ep.Protocol != ProtocolCopilotAPI || ep.Token != "gho_env" || ep.Credentials != CredentialAPIKey || ep.URL != copilotAPIDefaultGitHubURL {
+		t.Errorf("endpoint = %#v", ep)
+	}
+}
+
+func TestResolveEndpoint_CopilotAPIRejectsUnsafeConfiguration(t *testing.T) {
+	clearAllEnv(t)
+	tests := []struct {
+		name  string
+		entry providerEntryConfig
+		want  string
+	}{
+		{"URL", providerEntryConfig{URL: "https://example.com"}, "url must be"},
+		{"auth header", providerEntryConfig{AuthHeader: "authorization"}, "does not accept auth_header"},
+		{"AWS", providerEntryConfig{AWSProfile: "p"}, "does not accept aws_profile or aws_region"},
+		{"protocol override", providerEntryConfig{Protocol: "openai"}, "cannot change protocol"},
+		{"no credential", providerEntryConfig{}, "no api_key or api_key_cmd"},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			test.entry.Model = "m"
+			if test.name != "no credential" {
+				test.entry.APIKey = "gho_x"
+			}
+			path, _ := writeResolverConfig(t, configFile{
+				Provider:  "copilot-api",
+				Providers: map[string]providerEntryConfig{"copilot-api": test.entry},
+			})
+			_, err := ResolveEndpoint(path)
+			if err == nil || !strings.Contains(err.Error(), test.want) {
+				t.Fatalf("error = %v, want substring %q", err, test.want)
+			}
+		})
+	}
+}
+
+func TestResolveEndpoint_PresetCannotSwitchToCopilotAPI(t *testing.T) {
+	clearAllEnv(t)
+	path, _ := writeResolverConfig(t, configFile{
+		Provider: "openai",
+		Providers: map[string]providerEntryConfig{
+			"openai": {APIKey: "sk-x", Model: "m", Protocol: ProtocolCopilotAPI},
+		},
+	})
+	_, err := ResolveEndpoint(path)
+	if err == nil || !strings.Contains(err.Error(), "cannot change protocol") {
+		t.Fatalf("error = %v", err)
+	}
+}
+
+func TestResolveEndpoint_CustomProviderRejectsCopilotACP(t *testing.T) {
+	clearAllEnv(t)
+	path, _ := writeResolverConfig(t, configFile{
+		Provider: "custom-copilot",
+		CustomProviders: map[string]providerEntryConfig{
+			"custom-copilot": {
+				Protocol: ProtocolCopilotACP,
+				Model:    "gpt-5.6-sol",
+			},
+		},
+	})
+	_, err := ResolveEndpoint(path)
+	if err == nil || !strings.Contains(err.Error(), "available only through its built-in provider") {
+		t.Fatalf("error = %v, want built-in-only error", err)
 	}
 }
 

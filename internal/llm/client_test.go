@@ -1954,6 +1954,7 @@ func TestNewLLMClient_Dispatch(t *testing.T) {
 		{"anthropic -> AnthropicClient", ProtocolAnthropic, "*llm.AnthropicClient"},
 		{"openai -> OpenAIClient", ProtocolOpenAIChatCompletions, "*llm.OpenAIClient"},
 		{"openai-responses -> OpenAIResponsesClient", ProtocolOpenAIResponses, "*llm.OpenAIResponsesClient"},
+		{"copilot-acp -> copilotACPClient", ProtocolCopilotACP, "*llm.copilotACPClient"},
 		// Defensive default: an unnormalized/unknown protocol falls through to
 		// OpenAIClient (preserves the pre-refactor behavior where any
 		// non-anthropic protocol meant OpenAI).

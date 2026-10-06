@@ -20,7 +20,7 @@ ocr config provider
 ```
 
 Команда позволяет выбрать встроенного или пользовательского провайдера,
-ввести API-ключ и выбрать модель, сохраняет всё в файл конфигурации, а затем
+при необходимости ввести API-ключ и выбрать модель, сохраняет всё в файл конфигурации, а затем
 один раз запускает `ocr llm test` для проверки эндпоинта. Чтобы позже сменить
 модель:
 
@@ -41,14 +41,16 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 ### Встроенные провайдеры
 
 Перечисленные ниже провайдеры поставляются вместе с OCR; для них заранее
-заданы базовый URL и протокол, поэтому после выбора достаточно указать
-API-ключ. Если `providers.<name>.api_key` не задан, OCR использует
+заданы базовый URL и протокол. Большинству нужен API-ключ. Если
+`providers.<name>.api_key` не задан, OCR использует
 соответствующую переменную окружения.
 
 | Имя | Протокол | Базовый URL | Переменная окружения для API-ключа |
 |---|---|---|---|
 | `anthropic` | anthropic | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
 | `bedrock` | anthropic-bedrock | определяется `aws_region` | — (цепочка учётных данных AWS) |
+| `copilot-acp` | copilot-acp | нет (локальный процесс Copilot CLI) | нет (`copilot login`) |
+| `copilot-api` | copilot-api | `https://api.github.com` (GitHub API; хост Copilot определяется автоматически) | `COPILOT_GITHUB_TOKEN` |
 | `openai` | openai | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
 | `openai-responses` | openai-responses | `https://api.openai.com/v1` | `OPENAI_RESPONSES_API_KEY` |
 | `openrouter` | openai | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
@@ -77,6 +79,59 @@ API-ключ. Если `providers.<name>.api_key` не задан, OCR испо�
 `providers.<name>.models`, OCR выводит предупреждение в stderr; провайдер
 проверит модель при отправке запроса. Для пользовательских провайдеров действуют
 прежние правила проверки `--model`.
+
+### GitHub Copilot CLI через ACP
+
+Провайдер `copilot-acp` запускает отдельный процесс GitHub Copilot CLI для
+каждого ответа. Установите Copilot CLI и войдите в систему перед выбором
+провайдера:
+
+```bash
+copilot login
+ocr config set provider copilot-acp
+ocr config set model auto
+ocr llm test
+```
+
+OCR не хранит токен Copilot и не запускает команду входа. Провайдер не принимает
+`api_key`, URL, HTTP-заголовки, коды повторных попыток или параметры AWS. Каждый
+запрос использует отдельный временный рабочий каталог и применяет ID модели
+или селектор `auto` из списка `session/new`. Если `copilot` отсутствует в `PATH`, задайте путь
+к исполняемому файлу в `OCR_COPILOT_ACP_COMMAND`.
+
+### GitHub Copilot API (экспериментально)
+
+Провайдер `copilot-api` напрямую вызывает сервис chat completions GitHub Copilot.
+Он опирается на закрытые недокументированные интерфейсы GitHub, которые могут
+измениться или перестать работать без предупреждения; GitHub его не поддерживает.
+
+OCR запрашивает у GitHub API из `url` (по умолчанию `https://api.github.com`)
+конечную точку Copilot учётной записи через `/copilot_internal/user` и отправляет
+туда chat completions с OAuth-токеном GitHub в качестве bearer. Токен уходит только
+в этот GitHub API и на полученный хост Copilot, который должен быть хостом
+`api*.githubcopilot.com` или хостом внутри вашего тенанта GHE.com. Учётные данные
+берутся из `api_key`, `api_key_cmd` или `COPILOT_GITHUB_TOKEN`; OCR не читает
+`GH_TOKEN`, `GITHUB_TOKEN` или `gh auth token` самостоятельно.
+
+```bash
+ocr config set provider copilot-api
+ocr config set providers.copilot-api.api_key_cmd "gh auth token"
+ocr config set model <chat-completions-model-id>
+ocr llm test
+```
+
+Для учётной записи GHE.com направьте и учётные данные, и `url` на тенант:
+
+```bash
+ocr config set providers.copilot-api.api_key_cmd "gh auth token -h <tenant>.ghe.com"
+ocr config set providers.copilot-api.url https://api.<tenant>.ghe.com
+```
+
+Рекомендуемых моделей нет: укажите модель, доступную вашей учётной записи для
+chat completions. `url` принимает только `https://api.github.com` или
+`https://api.<tenant>.ghe.com`; `auth_header`, переопределение протокола и
+настройки AWS отклоняются. Отклонённые учётные данные (HTTP 401) приводят к
+ошибке запроса без повтора.
 
 ### Переопределение Base URL встроенного провайдера
 
@@ -206,7 +261,7 @@ Ollama игнорирует API-ключ, однако для пользоват
 
 ### Тайм-ауты
 
-Для каждого HTTP-запроса к LLM действует тайм-аут, по умолчанию **300 секунд**.
+Для каждого запроса на генерацию ответа LLM действует тайм-аут, по умолчанию **300 секунд**.
 Медленным локальным моделям (или большим файлам) может потребоваться больше
 времени. Доступны три настройки с возрастающей областью действия:
 

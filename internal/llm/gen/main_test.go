@@ -33,7 +33,7 @@ func TestRenderPreservesMetadataAndModelOrder(t *testing.T) {
 		},
 		{
 			Name: "ambient", DisplayName: "Ambient credentials",
-			Protocol: llm.ProtocolAnthropicBedrock, AmbientAuth: true,
+			Protocol: llm.ProtocolAnthropicBedrock,
 		},
 		{
 			Name: "responses", Protocol: llm.ProtocolOpenAIResponses,
@@ -56,16 +56,16 @@ func TestRenderPreservesMetadataAndModelOrder(t *testing.T) {
 			"name": "example", "displayName": "Quoted \"name\" <with> & characters",
 			"protocol": "anthropic", "baseUrl": "https://example.com/v1",
 			"authHeader": "x-api-key", "envVar": "EXAMPLE_API_KEY",
-			"models": []any{"z-default", "a-model", "quote\"slash\\newline\n"},
+			"credentials": "api-key", "models": []any{"z-default", "a-model", "quote\"slash\\newline\n"},
 		},
 		{
 			"name": "ambient", "displayName": "Ambient credentials",
 			"protocol": "anthropic-bedrock", "baseUrl": "", "envVar": "",
-			"ambientAuth": true, "models": []any{},
+			"credentials": "aws", "models": []any{},
 		},
 		{
 			"name": "responses", "displayName": "", "protocol": "openai-responses",
-			"baseUrl": "", "envVar": "", "models": []any{"responses-model"},
+			"baseUrl": "", "envVar": "", "credentials": "api-key", "models": []any{"responses-model"},
 		},
 	}
 	if !reflect.DeepEqual(got, want) {
