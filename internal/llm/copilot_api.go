@@ -232,7 +232,7 @@ func ValidateCopilotGitHubURL(raw string) error {
 	u, err := url.Parse(strings.TrimRight(raw, "/"))
 	ok := err == nil && u.Scheme == "https" && u.User == nil && u.Port() == "" &&
 		u.Path == "" && u.RawQuery == "" && u.Fragment == "" &&
-		(u.Host == "api.github.com" || gheTenantDomain(raw) != "")
+		(strings.EqualFold(u.Host, "api.github.com") || gheTenantDomain(raw) != "")
 	if !ok {
 		return fmt.Errorf("url must be %s or https://api.<tenant>.ghe.com", copilotAPIDefaultGitHubURL)
 	}

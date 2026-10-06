@@ -228,7 +228,7 @@ func TestValidateCopilotAPIBase(t *testing.T) {
 }
 
 func TestValidateCopilotGitHubURL(t *testing.T) {
-	for _, u := range []string{"https://api.github.com", "https://api.github.com/", "https://api.contoso.ghe.com"} {
+	for _, u := range []string{"https://api.github.com", "https://API.GitHub.com/", "https://api.contoso.ghe.com"} {
 		if err := ValidateCopilotGitHubURL(u); err != nil {
 			t.Errorf("%q rejected: %v", u, err)
 		}
