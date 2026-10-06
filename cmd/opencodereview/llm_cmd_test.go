@@ -4,6 +4,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -213,4 +214,39 @@ func TestLLMTestCommand_UsesDefaultConfigPath(t *testing.T) {
 	if want := filepath.Join(home, ".opencodereview", "config.json"); gotPath != want {
 		t.Fatalf("config path = %q, want %q", gotPath, want)
 	}
+}
+
+func TestRunLLMTestWithConfigPath_CopilotACPLiveToolRoundTrip(t *testing.T) {
+	if os.Getenv("OCR_COPILOT_ACP_LIVE_COMMAND") != "1" {
+		t.Skip("set OCR_COPILOT_ACP_LIVE_COMMAND=1 to use the authenticated Copilot CLI")
+	}
+
+	configPath := filepath.Join(t.TempDir(), "config.json")
+	if err := saveConfig(configPath, &Config{
+		Provider: "copilot-acp",
+		Providers: map[string]ProviderEntry{
+			"copilot-acp": {
+				Model:      "claude-sonnet-5",
+				TimeoutSec: 120,
+			},
+		},
+	}); err != nil {
+		t.Fatalf("save config: %v", err)
+	}
+
+	var runErr error
+	output := captureStdout(t, func() {
+		runErr = runLLMTestWithConfigPath(configPath)
+	})
+	if runErr != nil {
+		t.Fatalf("run LLM test: %v", runErr)
+	}
+
+	const want = "✓ Tool-call round trip verified"
+	for _, line := range strings.Split(strings.ReplaceAll(output, "\r\n", "\n"), "\n") {
+		if line == want {
+			return
+		}
+	}
+	t.Fatalf("stdout did not contain the exact line %q:\n%s", want, output)
 }

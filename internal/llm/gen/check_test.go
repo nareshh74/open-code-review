@@ -23,11 +23,10 @@ func TestCheckPresets(t *testing.T) {
 		},
 		{
 			Name: "beta", DisplayName: "Beta", Protocol: llm.ProtocolAnthropicBedrock,
-			AmbientAuth: true,
 		},
 	}
-	const alpha = `{"name":"alpha","displayName":"Alpha","protocol":"openai","baseUrl":"https://example.com/v1","authHeader":"Authorization","envVar":"ALPHA_API_KEY","models":["default","other"]}`
-	const beta = `{"name":"beta","displayName":"Beta","protocol":"anthropic-bedrock","baseUrl":"","envVar":"","ambientAuth":true,"models":[]}`
+	const alpha = `{"name":"alpha","displayName":"Alpha","protocol":"openai","baseUrl":"https://example.com/v1","authHeader":"Authorization","envVar":"ALPHA_API_KEY","credentials":"api-key","models":["default","other"]}`
+	const beta = `{"name":"beta","displayName":"Beta","protocol":"anthropic-bedrock","baseUrl":"","envVar":"","credentials":"aws","models":[]}`
 	valid := "[" + alpha + "," + beta + "]"
 	for _, tc := range []struct {
 		name, payload, wantErr string
@@ -51,7 +50,7 @@ func TestCheckPresets(t *testing.T) {
 		{"changed URL", strings.Replace(valid, `"baseUrl":"https://example.com/v1"`, `"baseUrl":"https://other.example/v1"`, 1), "baseUrl"},
 		{"changed auth header", strings.Replace(valid, `"authHeader":"Authorization"`, `"authHeader":"x-api-key"`, 1), "authHeader"},
 		{"changed environment variable", strings.Replace(valid, `"envVar":"ALPHA_API_KEY"`, `"envVar":"OTHER_API_KEY"`, 1), "envVar"},
-		{"changed ambient authentication", strings.Replace(valid, `"ambientAuth":true`, `"ambientAuth":false`, 1), "ambientAuth"},
+		{"changed credentials", strings.Replace(valid, `"credentials":"aws"`, `"credentials":"api-key"`, 1), "credentials"},
 		{"unknown field", strings.Replace(valid, `"name":"alpha"`, `"name":"alpha","unknown":true`, 1), "unknown field"},
 		{"wrong case field", strings.Replace(valid, `"name":"alpha"`, `"Name":"alpha"`, 1), `missing required field "name"`},
 		{"wrong case extra field", strings.Replace(valid, `"name":"alpha"`, `"name":"alpha","Name":"alpha"`, 1), "unknown field"},
@@ -60,7 +59,7 @@ func TestCheckPresets(t *testing.T) {
 		{"missing empty environment variable", strings.Replace(valid, `,"envVar":""`, "", 1), `missing required field "envVar"`},
 		{"null empty environment variable", strings.Replace(valid, `"envVar":""`, `"envVar":null`, 1), "must not be null"},
 		{"null optional auth header", strings.Replace(valid, `"name":"beta"`, `"name":"beta","authHeader":null`, 1), "must not be null"},
-		{"null optional ambient authentication", strings.Replace(valid, `"name":"alpha"`, `"name":"alpha","ambientAuth":null`, 1), "must not be null"},
+		{"null credentials", strings.Replace(valid, `"credentials":"api-key"`, `"credentials":null`, 1), "must not be null"},
 		{"wrong scalar type", strings.Replace(valid, `"displayName":"Alpha"`, `"displayName":42`, 1), `decode field "displayName"`},
 		{"null provider", "[" + alpha + ",null]", `missing required field "name"`},
 		{"invalid JSON", "[", "decode provider presets"},

@@ -4,6 +4,7 @@
 package llm
 
 import (
+	"slices"
 	"sort"
 	"strings"
 	"testing"
@@ -76,7 +77,7 @@ func TestListProviders_Order(t *testing.T) {
 	if len(providers) < 3 {
 		t.Fatalf("expected at least 3 providers, got %d", len(providers))
 	}
-	expected := []string{"anthropic", "baidu-qianfan", "bedrock", "dashscope", "dashscope-tokenplan", "deepseek", "edenai", "gemini", "hy-tokenplan", "iflytek", "kimi", "kimi-global", "litellm", "mimo", "minimax", "minimax-cn", "mistral", "novita", "ollama-cloud", "openai", "openai-responses", "openrouter", "siliconflow", "siliconflow-cn", "tencent-tokenhub", "volcengine", "xai", "z-ai", "z-ai-coding"}
+	expected := []string{"anthropic", "baidu-qianfan", "bedrock", "copilot-acp", "copilot-api", "dashscope", "dashscope-tokenplan", "deepseek", "edenai", "gemini", "hy-tokenplan", "iflytek", "kimi", "kimi-global", "litellm", "mimo", "minimax", "minimax-cn", "mistral", "novita", "ollama-cloud", "openai", "openai-responses", "openrouter", "siliconflow", "siliconflow-cn", "tencent-tokenhub", "volcengine", "xai", "z-ai", "z-ai-coding"}
 	if len(providers) != len(expected) {
 		t.Fatalf("expected %d providers, got %d", len(expected), len(providers))
 	}
@@ -182,6 +183,29 @@ func TestLookupProvider_OpenAIDetails(t *testing.T) {
 		if p.Models[i] != model {
 			t.Errorf("Models[%d] = %q, want %q", i, p.Models[i], model)
 		}
+	}
+}
+
+func TestLookupProvider_CopilotACPDetails(t *testing.T) {
+	p, ok := LookupProvider("copilot-acp")
+	if !ok {
+		t.Fatal("copilot-acp not found")
+	}
+	if p.DisplayName != "GitHub Copilot CLI (ACP)" {
+		t.Errorf("DisplayName = %q, want %q", p.DisplayName, "GitHub Copilot CLI (ACP)")
+	}
+	if p.Protocol != ProtocolCopilotACP {
+		t.Errorf("Protocol = %q, want %q", p.Protocol, ProtocolCopilotACP)
+	}
+	if p.BaseURL != "" || p.EnvVar != "" || p.AuthHeader != "" {
+		t.Errorf("HTTP credential metadata = URL %q, env %q, header %q; want empty", p.BaseURL, p.EnvVar, p.AuthHeader)
+	}
+	if got := CredentialSourceForProtocol(p.Protocol); got != CredentialCopilotCLI {
+		t.Errorf("credentials = %q, want %q", got, CredentialCopilotCLI)
+	}
+	wantModels := []string{"auto", "claude-sonnet-5", "claude-opus-5.5", "claude-opus-5", "claude-opus-4.8", "claude-haiku-4.5", "gpt-6.1-sol", "gpt-6-sol", "gpt-6-luna", "gpt-6-astra", "gpt-5.6-sol", "gpt-5.6-sol-fast", "gpt-5.6-terra", "gpt-5.6-luna", "gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex", "gpt-5-mini", "mai-code-1.1-flash", "gemini-3.8-flash", "gemini-3.7-flash", "grok-4.5", "claude-sonnet-5.5", "grok-4.6", "grok-4.7"}
+	if !slices.Equal(p.Models, wantModels) {
+		t.Errorf("Models = %v, want %v", p.Models, wantModels)
 	}
 }
 

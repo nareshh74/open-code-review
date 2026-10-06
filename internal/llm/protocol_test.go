@@ -18,6 +18,7 @@ func TestNormalizeProtocol(t *testing.T) {
 		{"canonical anthropic is idempotent", ProtocolAnthropic, ProtocolAnthropic},
 		{"canonical openai is idempotent", ProtocolOpenAIChatCompletions, ProtocolOpenAIChatCompletions},
 		{"canonical openai-responses is idempotent", ProtocolOpenAIResponses, ProtocolOpenAIResponses},
+		{"canonical copilot-acp is idempotent", ProtocolCopilotACP, ProtocolCopilotACP},
 		{"anthropic case-insensitive", "ANTHROPIC", ProtocolAnthropic},
 		{"openai-responses case-insensitive", "OpenAI-Responses", ProtocolOpenAIResponses},
 		{"unknown passthrough lowercased", "gRPC", "grpc"},
@@ -42,6 +43,7 @@ func TestValidateProtocol(t *testing.T) {
 		{"anthropic ok", ProtocolAnthropic, false, ""},
 		{"openai ok", ProtocolOpenAIChatCompletions, false, ""},
 		{"openai-responses ok", ProtocolOpenAIResponses, false, ""},
+		{"copilot-acp ok", ProtocolCopilotACP, false, ""},
 		{"empty rejected", "", true, "unsupported protocol"},
 		{"grpc rejected", "grpc", true, "unsupported protocol"},
 		{"anthropic-vertex rejected", "anthropic-vertex", true, "unsupported protocol"},
@@ -73,9 +75,41 @@ func TestValidateProtocol_ErrorMessageListsAllProtocols(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	for _, sub := range []string{ProtocolAnthropic, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses} {
+	for _, sub := range []string{ProtocolAnthropic, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses, ProtocolAnthropicBedrock, ProtocolCopilotACP} {
 		if !strings.Contains(err.Error(), sub) {
 			t.Errorf("error %q should mention %q", err.Error(), sub)
 		}
+	}
+}
+
+func TestProtocolCredentialSources(t *testing.T) {
+	tests := []struct {
+		protocol    string
+		credentials CredentialSource
+		requiresURL bool
+		acceptsAWS  bool
+		builtInOnly bool
+	}{
+		{ProtocolAnthropic, CredentialAPIKey, true, false, false},
+		{ProtocolOpenAIChatCompletions, CredentialAPIKey, true, false, false},
+		{ProtocolOpenAIResponses, CredentialAPIKey, true, false, false},
+		{ProtocolAnthropicBedrock, CredentialAWS, false, true, false},
+		{ProtocolCopilotACP, CredentialCopilotCLI, false, false, true},
+	}
+	for _, test := range tests {
+		t.Run(test.protocol, func(t *testing.T) {
+			if got := CredentialSourceForProtocol(test.protocol); got != test.credentials {
+				t.Errorf("CredentialSourceForProtocol = %q, want %q", got, test.credentials)
+			}
+			if got := ProtocolRequiresURL(test.protocol); got != test.requiresURL {
+				t.Errorf("ProtocolRequiresURL = %t, want %t", got, test.requiresURL)
+			}
+			if got := ProtocolAcceptsAWSOptions(test.protocol); got != test.acceptsAWS {
+				t.Errorf("ProtocolAcceptsAWSOptions = %t, want %t", got, test.acceptsAWS)
+			}
+			if got := ProtocolIsBuiltInOnly(test.protocol); got != test.builtInOnly {
+				t.Errorf("ProtocolIsBuiltInOnly = %t, want %t", got, test.builtInOnly)
+			}
+		})
 	}
 }

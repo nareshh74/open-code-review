@@ -18,7 +18,7 @@ sidebar:
 ocr config provider
 ```
 
-組み込みまたはカスタムの provider を選択し、API key を入力し、model を選び、すべてを設定ファイルに保存したうえで、`ocr llm test` を 1 回実行してエンドポイントを検証します。あとで model を切り替えるには：
+組み込みまたはカスタムの provider を選択し、必要な場合だけ API key を入力し、model を選び、すべてを設定ファイルに保存したうえで、`ocr llm test` を 1 回実行してエンドポイントを検証します。あとで model を切り替えるには：
 
 ```bash
 ocr config model
@@ -37,13 +37,15 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 ### 組み込み provider
 
 以下の provider が OCR に同梱されており、Base URL とプロトコルがプリセット
-されています——選択後は API key を入力するだけです。`providers.<name>.api_key`
+されています。ほとんどの provider は API key を必要とします。`providers.<name>.api_key`
 が未設定の場合は、対応する環境変数に自動的にフォールバックします。
 
 | 名称 | プロトコル | Base URL | API key 環境変数 |
 |---|---|---|---|
 | `anthropic` | anthropic | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
 | `bedrock` | anthropic-bedrock | `aws_region` から決定 | —（AWS 認証情報チェーン） |
+| `copilot-acp` | copilot-acp | なし（ローカル Copilot CLI プロセス） | なし（`copilot login`） |
+| `copilot-api` | copilot-api | `https://api.github.com`（GitHub API。Copilot ホストは自動検出） | `COPILOT_GITHUB_TOKEN` |
 | `openai` | openai | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
 | `openai-responses` | openai-responses | `https://api.openai.com/v1` | `OPENAI_RESPONSES_API_KEY` |
 | `openrouter` | openai | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
@@ -71,6 +73,57 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 の制限には使われません。組み込み一覧にも `providers.<name>.models` にもないモデルを
 指定すると、OCR は stderr に警告を出します。モデルはリクエスト送信時に provider が
 検証します。カスタム provider には従来の `--model` 検証ルールが適用されます。
+
+### ACP 経由で GitHub Copilot CLI を使う
+
+`copilot-acp` は補完ごとに、ログイン済みの GitHub Copilot CLI プロセスを 1 つ
+起動します。Copilot CLI をインストールしてログインした後、provider を選択します。
+
+```bash
+copilot login
+ocr config set provider copilot-acp
+ocr config set model auto
+ocr llm test
+```
+
+OCR は Copilot token を保存せず、ログインコマンドも実行しません。この provider は
+`api_key`、URL、HTTP header、retry code、AWS 設定を受け付けません。各リクエストは
+独立した一時作業ディレクトリを使い、`session/new` が返した model ID または `auto`
+セレクターを適用します。`copilot` が `PATH` にない場合は、
+`OCR_COPILOT_ACP_COMMAND` に実行ファイルのパスを設定します。
+
+### GitHub Copilot API（実験的）
+
+`copilot-api` は GitHub Copilot の chat completions サービスを直接呼び出します。
+GitHub の非公開・非ドキュメントのインターフェースに依存しており、予告なく変更・
+停止される可能性があります。GitHub の公式サポート対象ではありません。
+
+OCR は `url` の GitHub API（既定は `https://api.github.com`）の
+`/copilot_internal/user` からアカウントの Copilot エンドポイントを取得し、GitHub
+OAuth トークンを bearer としてそこへ chat completions を送ります。トークンの送信先は
+その GitHub API と、返された Copilot ホスト（`api*.githubcopilot.com` または
+GHE.com テナント内のホスト）だけです。資格情報は `api_key`、`api_key_cmd`、または
+`COPILOT_GITHUB_TOKEN` から取得します。OCR が `GH_TOKEN`、`GITHUB_TOKEN`、
+`gh auth token` を自動で読むことはありません。
+
+```bash
+ocr config set provider copilot-api
+ocr config set providers.copilot-api.api_key_cmd "gh auth token"
+ocr config set model <chat-completions-model-id>
+ocr llm test
+```
+
+GHE.com アカウントでは、資格情報と `url` の両方をテナントに向けます。
+
+```bash
+ocr config set providers.copilot-api.api_key_cmd "gh auth token -h <tenant>.ghe.com"
+ocr config set providers.copilot-api.url https://api.<tenant>.ghe.com
+```
+
+推奨モデルはないため、アカウントで chat completions に使えるモデルを設定して
+ください。`url` は `https://api.github.com` または `https://api.<tenant>.ghe.com`
+のみ受け付けます。`auth_header`、プロトコルの上書き、AWS 設定は拒否されます。
+資格情報が拒否された場合（HTTP 401）、リクエストは再送されずに失敗します。
 
 ### 組み込み provider の Base URL を上書きする
 
@@ -195,7 +248,7 @@ Ollama は API key を無視しますが、カスタム provider は空でない
 
 ### タイムアウト（Timeouts）
 
-各 LLM リクエストには HTTP タイムアウトがあり、デフォルトは **300 秒**です。
+各 LLM の補完処理にはタイムアウトがあり、デフォルトは **300 秒**です。
 遅いローカルモデル（あるいは大きなファイル）では、それ以上の時間が必要になることがあります。
 スコープの狭い順に、3 つの設定があります。
 

@@ -18,7 +18,7 @@ sidebar:
 ocr config provider
 ```
 
-它会让你选择一个内置或自定义 provider、填入 API key、挑选 model，保存到配置文件后自动运行一次 `ocr llm test` 验证端点。之后想换模型：
+它会让你选择一个内置或自定义 provider、在需要时填入 API key、挑选 model，保存到配置文件后自动运行一次 `ocr llm test` 验证端点。之后想换模型：
 
 ```bash
 ocr config model
@@ -36,13 +36,15 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 
 ### 内置 provider
 
-下列 provider 随 OCR 发布，已预置 Base URL 与协议，选中后只需填 API key。
+下列 provider 随 OCR 发布，已预置 Base URL 与协议。大多数 provider 需要 API key。
 若 `providers.<name>.api_key` 未设置，会自动回退到对应的环境变量。
 
 | 名称 | 协议 | Base URL | API key 环境变量 |
 |---|---|---|---|
 | `anthropic` | anthropic | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
 | `bedrock` | anthropic-bedrock | 由 `aws_region` 决定 | —（AWS 凭证链） |
+| `copilot-acp` | copilot-acp | 不适用（本地 Copilot CLI 进程） | 不适用（`copilot login`） |
+| `copilot-api` | copilot-api | `https://api.github.com`（GitHub API，Copilot 主机自动发现） | `COPILOT_GITHUB_TOKEN` |
 | `openai` | openai | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
 | `openai-responses` | openai-responses | `https://api.openai.com/v1` | `OPENAI_RESPONSES_API_KEY` |
 | `openrouter` | openai | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
@@ -70,6 +72,53 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 如果指定的模型既不在内置列表中，也不在 `providers.<name>.models` 中，OCR 会向
 stderr 输出警告；发送请求时由 provider 验证模型。自定义 provider 仍遵循原有的
 `--model` 校验规则。
+
+### 通过 ACP 使用 GitHub Copilot CLI
+
+`copilot-acp` 每次补全都会启动一个已登录的 GitHub Copilot CLI 进程。先安装
+Copilot CLI 并登录，再选择该 provider：
+
+```bash
+copilot login
+ocr config set provider copilot-acp
+ocr config set model auto
+ocr llm test
+```
+
+OCR 不保存 Copilot token，也不会运行登录命令。该 provider 不接受 `api_key`、URL、
+HTTP header、重试状态码或 AWS 设置。每个请求使用独立的临时工作目录，并应用
+`session/new` 返回的 model ID 或 `auto` 选择器。若 `copilot` 不在 `PATH` 中，请将
+`OCR_COPILOT_ACP_COMMAND` 设置为可执行文件路径。
+
+### GitHub Copilot API（实验性）
+
+`copilot-api` 直接调用 GitHub Copilot 的 chat completions 服务。它依赖 GitHub
+未公开、无文档的私有接口，可能随时变更或失效，且不受 GitHub 官方支持。
+
+OCR 通过 `url` 指定的 GitHub API（默认 `https://api.github.com`）的
+`/copilot_internal/user` 获取账号的 Copilot 端点，然后以 GitHub OAuth 令牌作为
+bearer 向该端点发送 chat completions。令牌只发送给该 GitHub API 和返回的 Copilot
+主机，后者必须是 `api*.githubcopilot.com` 或你的 GHE.com 租户内的主机。凭据来自
+`api_key`、`api_key_cmd` 或 `COPILOT_GITHUB_TOKEN`；OCR 不会自行读取
+`GH_TOKEN`、`GITHUB_TOKEN` 或 `gh auth token`。
+
+```bash
+ocr config set provider copilot-api
+ocr config set providers.copilot-api.api_key_cmd "gh auth token"
+ocr config set model <chat-completions-model-id>
+ocr llm test
+```
+
+GHE.com 账号需让凭据和 `url` 都指向租户：
+
+```bash
+ocr config set providers.copilot-api.api_key_cmd "gh auth token -h <tenant>.ghe.com"
+ocr config set providers.copilot-api.url https://api.<tenant>.ghe.com
+```
+
+该提供商不预置模型，请设置账号可用于 chat completions 的模型。`url` 只接受
+`https://api.github.com` 或 `https://api.<tenant>.ghe.com`；不接受 `auth_header`、
+协议覆盖和 AWS 设置。凭据被拒（HTTP 401）时请求直接失败，不会重放。
 
 ### 覆盖内置 provider 的 Base URL
 
@@ -185,7 +234,7 @@ provider 没有环境变量回退），所以设任意占位值即可。模型�
 
 ### 超时
 
-每个 LLM 请求都有 HTTP 超时，默认 **300 秒**。慢的本地模型（或大文件）可能
+每次 LLM 补全都有超时，默认 **300 秒**。慢的本地模型（或大文件）可能
 需要更长的时间。三个配置项，作用域递增：
 
 - `providers.<name>.timeout_sec` / `custom_providers.<name>.timeout_sec`

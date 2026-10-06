@@ -52,8 +52,8 @@ func TestBedrockProviderIsRegistered(t *testing.T) {
 	if p.Protocol != ProtocolAnthropicBedrock {
 		t.Errorf("Protocol = %q, want %q", p.Protocol, ProtocolAnthropicBedrock)
 	}
-	if !p.AmbientAuth {
-		t.Error("AmbientAuth = false, want true — bedrock signs with SigV4 and has no api_key")
+	if got := CredentialSourceForProtocol(p.Protocol); got != CredentialAWS {
+		t.Errorf("credentials = %q, want %q", got, CredentialAWS)
 	}
 	if p.BaseURL != "" {
 		t.Errorf("BaseURL = %q, want empty — the region determines the bedrock-runtime host", p.BaseURL)
@@ -83,8 +83,8 @@ func TestResolveBedrockWithoutAPIKey(t *testing.T) {
 	if ep.Protocol != ProtocolAnthropicBedrock {
 		t.Errorf("Protocol = %q, want %q", ep.Protocol, ProtocolAnthropicBedrock)
 	}
-	if !ep.AmbientAuth {
-		t.Error("AmbientAuth = false, want true")
+	if ep.Credentials != CredentialAWS {
+		t.Errorf("Credentials = %q, want %q", ep.Credentials, CredentialAWS)
 	}
 	if ep.Token != "" {
 		t.Errorf("Token = %q, want empty", ep.Token)
@@ -94,7 +94,7 @@ func TestResolveBedrockWithoutAPIKey(t *testing.T) {
 	}
 }
 
-// TestBedrockDoesNotRunAPIKeyCmd pins that an ambient-auth provider never
+// TestBedrockDoesNotRunAPIKeyCmd pins that an AWS-authenticated provider never
 // executes api_key_cmd. A signed request has no use for the output, and the
 // command is typically a secret-manager read — running it means a real
 // 1Password / Touch ID prompt for a value that is immediately discarded. The
@@ -114,7 +114,7 @@ func TestBedrockDoesNotRunAPIKeyCmd(t *testing.T) {
 		t.Fatalf("ResolveEndpoint: %v", err)
 	}
 	if _, err := os.Stat(sentinel); !os.IsNotExist(err) {
-		t.Error("api_key_cmd ran for an ambient-auth provider")
+		t.Error("api_key_cmd ran for an AWS-authenticated provider")
 	}
 	if ep.Token != "" {
 		t.Errorf("Token = %q, want empty", ep.Token)
@@ -160,11 +160,11 @@ func TestResolveBedrockPassesAWSSettings(t *testing.T) {
 	}
 }
 
-// TestAmbientAuthFollowsTheEffectiveProtocol covers the entry-level protocol
-// override. An entry may override a preset's protocol, so reading ambient auth
+// TestCredentialSourceFollowsTheEffectiveProtocol covers the entry-level protocol
+// override. An entry may override a preset's protocol, so reading credentials
 // off the preset alone lets `protocol: openai` on the bedrock preset resolve with
 // no token and no URL — an endpoint that cannot work, reported as if configured.
-func TestAmbientAuthFollowsTheEffectiveProtocol(t *testing.T) {
+func TestCredentialSourceFollowsTheEffectiveProtocol(t *testing.T) {
 	t.Run("bedrock preset overridden to a token protocol needs a key again", func(t *testing.T) {
 		path := writeConfig(t, map[string]any{
 			"provider": "bedrock",
@@ -191,8 +191,8 @@ func TestAmbientAuthFollowsTheEffectiveProtocol(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveEndpoint: %v", err)
 		}
-		if !ep.AmbientAuth {
-			t.Error("AmbientAuth = false for an entry whose protocol is anthropic-bedrock")
+		if ep.Credentials != CredentialAWS {
+			t.Errorf("Credentials = %q, want %q", ep.Credentials, CredentialAWS)
 		}
 	})
 }
@@ -265,8 +265,8 @@ func TestCustomProviderCanSelectBedrock(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ResolveEndpoint: %v", err)
 		}
-		if !ep.AmbientAuth {
-			t.Error("AmbientAuth = false for a custom provider on the bedrock protocol")
+		if ep.Credentials != CredentialAWS {
+			t.Errorf("Credentials = %q, want %q", ep.Credentials, CredentialAWS)
 		}
 		if ep.AWSRegion != "eu-west-1" || ep.AWSProfile != "example-profile" {
 			t.Errorf("AWSRegion/AWSProfile = %q/%q, want eu-west-1/example-profile", ep.AWSRegion, ep.AWSProfile)
