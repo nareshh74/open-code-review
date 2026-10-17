@@ -285,13 +285,6 @@ func TestCheckAPIKeyRequirement(t *testing.T) {
 	if err := checkAPIKeyRequirement("bedrock", "", "", bedrock, true); err != nil {
 		t.Errorf("AWS provider with no api_key = %v, want nil", err)
 	}
-	copilot, ok := llm.LookupProvider("copilot-acp")
-	if !ok {
-		t.Fatal("copilot-acp preset not registered")
-	}
-	if err := checkAPIKeyRequirement("copilot-acp", "", "", copilot, true); err != nil {
-		t.Errorf("CLI-authenticated provider with no api_key = %v, want nil", err)
-	}
 
 	t.Setenv(anthropic.EnvVar, "")
 	if err := checkAPIKeyRequirement("anthropic", "", "", anthropic, true); err == nil {
@@ -303,7 +296,7 @@ func TestCheckAPIKeyRequirement(t *testing.T) {
 }
 
 func TestProviderTUIProviderAuthenticatedTransportSkipsAPIKeyStep(t *testing.T) {
-	for _, providerName := range []string{"bedrock", "copilot-acp"} {
+	for _, providerName := range []string{"bedrock"} {
 		t.Run(providerName, func(t *testing.T) {
 			m := newProviderTUI(&Config{}, "")
 			idx := -1

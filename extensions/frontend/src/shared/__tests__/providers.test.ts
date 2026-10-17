@@ -27,7 +27,7 @@ describe('generated provider presets', () => {
     }
   });
 
-  it.each(['bedrock', 'copilot-acp', 'openai-responses'])('uses the built-in configuration path for %s', (name) => {
+  it.each(['bedrock', 'openai-responses'])('uses the built-in configuration path for %s', (name) => {
     const preset = lookupPreset(name);
     expect(preset).toBeDefined();
     const model = preset?.models[0] ?? '';
@@ -51,22 +51,16 @@ describe('generated provider presets', () => {
     expect(lookupPreset('bedrock')).toMatchObject({
       protocol: 'anthropic-bedrock', credentials: 'aws', envVar: '', baseUrl: '',
     });
-    expect(lookupPreset('copilot-acp')).toMatchObject({
-      protocol: 'copilot-acp', credentials: 'copilot-cli', envVar: '', baseUrl: '',
-    });
     expect(lookupPreset('openai-responses')?.protocol).toBe('openai-responses');
     expect(lookupPreset('anthropic')?.authHeader).toBe('x-api-key');
   });
 
   it('derives API key requirements from the effective protocol', () => {
     const bedrock = lookupPreset('bedrock');
-    const copilot = lookupPreset('copilot-acp');
     const openai = lookupPreset('openai');
     expect(bedrock).toBeDefined();
-    expect(copilot).toBeDefined();
     expect(openai).toBeDefined();
     expect(requiresApiKey(bedrock!)).toBe(false);
-    expect(requiresApiKey(copilot!)).toBe(false);
     expect(requiresApiKey(bedrock!, 'openai')).toBe(true);
     expect(requiresApiKey(openai!, 'anthropic-bedrock')).toBe(false);
     expect(requiresApiKey(openai!, ' OPENAI ')).toBe(true);

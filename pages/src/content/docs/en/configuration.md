@@ -47,7 +47,6 @@ environment variable.
 |---|---|---|---|
 | `anthropic` | anthropic | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
 | `bedrock` | anthropic-bedrock | derived from `aws_region` | — (AWS credential chain) |
-| `copilot-acp` | copilot-acp | not applicable (local Copilot CLI process) | not applicable (`copilot login`) |
 | `copilot-api` | copilot-api | `https://api.github.com` (GitHub API; Copilot host discovered) | `COPILOT_GITHUB_TOKEN` |
 | `openai` | openai | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
 | `openai-responses` | openai-responses | `https://api.openai.com/v1` | `OPENAI_RESPONSES_API_KEY` |
@@ -77,28 +76,6 @@ restrictions on `--model`. An override absent from both the built-in list and
 `providers.<name>.models` produces a warning on stderr; the provider validates
 the model when the request is sent. Custom providers retain their existing
 `--model` validation rules.
-
-### GitHub Copilot CLI through ACP
-
-The `copilot-acp` provider starts one authenticated GitHub Copilot CLI process
-for each completion. Install the Copilot CLI and sign in before selecting the
-provider:
-
-```bash
-copilot login
-ocr config set provider copilot-acp
-ocr config set model auto
-ocr llm test
-```
-
-OCR does not store a Copilot token or run the login command. The provider
-accepts no `api_key`, URL, HTTP headers, retry codes, or AWS settings. Each
-request creates an isolated temporary working directory, applies the configured
-model ID or `auto` selector from the values advertised by `session/new`, sends one ACP
-prompt, and removes the directory after the process exits.
-
-Set `OCR_COPILOT_ACP_COMMAND` to the Copilot executable path when `copilot` is
-not on `PATH`. The value is an executable path, not a shell command.
 
 ### GitHub Copilot API (experimental)
 

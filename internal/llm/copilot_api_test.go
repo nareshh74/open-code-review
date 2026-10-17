@@ -18,6 +18,9 @@ type copilotAPIFake struct {
 	server      *httptest.Server
 	discoveries atomic.Int32
 	bodies      []map[string]any
+	catalog     string // /models body; empty serves 404
+	respPaths   []string
+	respModels  []string
 	chatAuth    []string
 	chatHdr     http.Header
 	chatCode    int
@@ -61,12 +64,91 @@ func newCopilotAPIFake(t *testing.T) *copilotAPIFake {
 				return
 			}
 			_, _ = io.WriteString(w, `{"id":"2","object":"chat.completion","model":"m","choices":[{"index":0,"finish_reason":"stop","message":{"role":"assistant","content":"done"}}],"usage":{"prompt_tokens":1,"completion_tokens":1,"total_tokens":2}}`)
+		case "/models":
+			if f.catalog == "" {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			_, _ = io.WriteString(w, f.catalog)
+		case "/responses":
+			f.respPaths = append(f.respPaths, r.URL.Path)
+			var body map[string]any
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			f.respModels = append(f.respModels, body["model"].(string))
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"id":"r1","object":"response","model":"m","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"resp-ok"}]}],"usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}`)
 		default:
 			t.Errorf("unexpected path %q", r.URL.Path)
 		}
 	}))
 	t.Cleanup(f.server.Close)
 	return f
+}
+
+func TestCopilotAPIRoutesResponsesOnlyModelsToResponsesAPI(t *testing.T) {
+	f := newCopilotAPIFake(t)
+	c := f.client(t)
+	ctx := context.Background()
+	resp, err := c.CompletionsWithCtx(ctx, ChatRequest{Model: "gpt-5.6-terra", Messages: []Message{{Role: "user", Content: "hi"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resp.VisibleContent() != "resp-ok" {
+		t.Fatalf("terra content = %q, want resp-ok", resp.VisibleContent())
+	}
+	if len(f.respModels) != 1 || f.respModels[0] != "gpt-5.6-terra" {
+		t.Fatalf("responses calls = %v, want one gpt-5.6-terra", f.respModels)
+	}
+	if len(f.bodies) != 0 {
+		t.Fatalf("terra leaked to chat completions: %d calls", len(f.bodies))
+	}
+	if _, err := c.CompletionsWithCtx(ctx, ChatRequest{Model: "claude-haiku-5.5", Messages: []Message{{Role: "user", Content: "hi"}}}); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.bodies) != 1 || len(f.respModels) != 1 {
+		t.Fatalf("haiku routing wrong: chat=%d responses=%d", len(f.bodies), len(f.respModels))
+	}
+	if n := f.discoveries.Load(); n != 1 {
+		t.Fatalf("discoveries = %d, want 1 shared across both APIs", n)
+	}
+}
+
+func TestCopilotAPIRoutesByModelCatalog(t *testing.T) {
+	f := newCopilotAPIFake(t)
+	f.catalog = `{"data":[
+	{"id":"future-gpt","supported_endpoints":["/responses"]},
+	{"id":"claude-sonnet-5.5","supported_endpoints":["/chat/completions","/v1/messages"]},
+	{"id":"gpt-5.6-terra","supported_endpoints":["/chat/completions","/responses"]},
+	{"id":"no-endpoints"}]}`
+	c := f.client(t)
+	ctx := context.Background()
+	for _, model := range []string{"future-gpt", "claude-sonnet-5.5", "gpt-5.6-terra", "no-endpoints"} {
+		if _, err := c.CompletionsWithCtx(ctx, ChatRequest{Model: model, Messages: []Message{{Role: "user", Content: "hi"}}}); err != nil {
+			t.Fatalf("%s: %v", model, err)
+		}
+	}
+	// future-gpt: catalog says responses-only. Claude and terra offer chat, so chat
+	// wins (catalog overrides the static list). no-endpoints falls back to chat.
+	if len(f.respModels) != 1 || f.respModels[0] != "future-gpt" {
+		t.Fatalf("responses calls = %v, want [future-gpt]", f.respModels)
+	}
+	if len(f.bodies) != 3 {
+		t.Fatalf("chat calls = %d, want 3", len(f.bodies))
+	}
+}
+
+func TestCopilotAPIFallsBackToStaticListWhenCatalogUnavailable(t *testing.T) {
+	f := newCopilotAPIFake(t) // /models -> 404
+	c := f.client(t)
+	ctx := context.Background()
+	for _, model := range []string{"grok-4.7", "claude-sonnet-5.5"} {
+		if _, err := c.CompletionsWithCtx(ctx, ChatRequest{Model: model, Messages: []Message{{Role: "user", Content: "hi"}}}); err != nil {
+			t.Fatalf("%s: %v", model, err)
+		}
+	}
+	if len(f.respModels) != 1 || f.respModels[0] != "grok-4.7" || len(f.bodies) != 1 {
+		t.Fatalf("responses=%v chat=%d, want grok-4.7 on responses and claude on chat", f.respModels, len(f.bodies))
+	}
 }
 
 func (f *copilotAPIFake) client(t *testing.T) *copilotAPIClient {

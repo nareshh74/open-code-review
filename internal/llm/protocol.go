@@ -34,9 +34,6 @@ const (
 	// official SDK's bedrock middleware performs that rewriting, so this
 	// shares the Anthropic client rather than reimplementing the protocol.
 	ProtocolAnthropicBedrock = "anthropic-bedrock"
-	// ProtocolCopilotACP is the Agent Client Protocol served by the installed
-	// GitHub Copilot CLI over a subprocess's standard input and output.
-	ProtocolCopilotACP = "copilot-acp"
 	// ProtocolCopilotAPI is the experimental, undocumented GitHub Copilot chat
 	// completions service. A GitHub credential is exchanged for a short-lived
 	// Copilot token before each session.
@@ -47,9 +44,8 @@ const (
 type CredentialSource string
 
 const (
-	CredentialAPIKey     CredentialSource = "api-key"
-	CredentialAWS        CredentialSource = "aws"
-	CredentialCopilotCLI CredentialSource = "copilot-cli"
+	CredentialAPIKey CredentialSource = "api-key"
+	CredentialAWS    CredentialSource = "aws"
 )
 
 type protocolDefinition struct {
@@ -65,7 +61,6 @@ var protocolDefinitions = []protocolDefinition{
 	{name: ProtocolOpenAIChatCompletions, credentials: CredentialAPIKey, requiresURL: true},
 	{name: ProtocolOpenAIResponses, credentials: CredentialAPIKey, requiresURL: true},
 	{name: ProtocolAnthropicBedrock, credentials: CredentialAWS, acceptsAWSOptions: true},
-	{name: ProtocolCopilotACP, credentials: CredentialCopilotCLI, builtInOnly: true},
 	{name: ProtocolCopilotAPI, credentials: CredentialAPIKey, builtInOnly: true},
 }
 
@@ -133,8 +128,6 @@ func NormalizeProtocol(raw string) string {
 		return ProtocolOpenAIResponses
 	case ProtocolAnthropicBedrock:
 		return ProtocolAnthropicBedrock
-	case ProtocolCopilotACP:
-		return ProtocolCopilotACP
 	case ProtocolCopilotAPI:
 		return ProtocolCopilotAPI
 	default:

@@ -503,26 +503,6 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 	}
 
 	credentials := CredentialSourceForProtocol(protocol)
-	if protocol == ProtocolCopilotACP {
-		switch {
-		case apiKey != "":
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept api_key", cfg.Provider)
-		case apiKeyCmd != "":
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept api_key_cmd", cfg.Provider)
-		case entry.URL != "":
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept url", cfg.Provider)
-		case entry.AuthHeader != "":
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept auth_header", cfg.Provider)
-		case len(entry.ExtraBody) != 0:
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept extra_body", cfg.Provider)
-		case len(entry.ExtraHeaders) != 0:
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept extra_headers", cfg.Provider)
-		case len(entry.RetryCodes) != 0:
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept retry_codes", cfg.Provider)
-		case entry.AWSProfile != "" || entry.AWSRegion != "":
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept aws_profile or aws_region", cfg.Provider)
-		}
-	}
 	if protocol == ProtocolCopilotAPI {
 		// url names the GitHub API the credential belongs to; GitHub then
 		// reports the Copilot host, so only GitHub hosts are accepted.

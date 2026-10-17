@@ -9,11 +9,11 @@ export { PROVIDER_PRESETS };
 export interface OcrProviderPreset {
   name: string;
   displayName: string;
-  protocol: 'anthropic' | 'openai' | 'openai-responses' | 'anthropic-bedrock' | 'copilot-acp' | 'copilot-api';
+  protocol: 'anthropic' | 'openai' | 'openai-responses' | 'anthropic-bedrock' | 'copilot-api';
   baseUrl: string;
   authHeader?: string;
   envVar: string;
-  credentials: 'api-key' | 'aws' | 'copilot-cli';
+  credentials: 'api-key' | 'aws';
   models: string[];
 }
 
@@ -29,7 +29,7 @@ export function isPresetProvider(name: string): boolean {
 
 export function requiresApiKey(preset: OcrProviderPreset, protocolOverride?: string): boolean {
   const protocol = protocolOverride?.trim().toLowerCase();
-  if (protocol) return protocol !== 'anthropic-bedrock' && protocol !== 'copilot-acp';
+  if (protocol) return protocol !== 'anthropic-bedrock';
   return preset.credentials === 'api-key';
 }
 
