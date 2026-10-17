@@ -2791,11 +2791,6 @@ func TestCpProtocols_ContainsCustomProviderProtocols(t *testing.T) {
 			t.Error("manualProtocols offers bedrock; the llm block has no region, profile or use for its url and token")
 		}
 	}
-	for _, p := range cpProtocols {
-		if p == llm.ProtocolCopilotACP {
-			t.Error("cpProtocols offers copilot-acp; this process transport is built-in-only")
-		}
-	}
 }
 
 func TestCpProtocolIndex(t *testing.T) {

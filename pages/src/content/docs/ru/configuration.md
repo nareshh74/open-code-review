@@ -49,7 +49,6 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 |---|---|---|---|
 | `anthropic` | anthropic | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
 | `bedrock` | anthropic-bedrock | определяется `aws_region` | — (цепочка учётных данных AWS) |
-| `copilot-acp` | copilot-acp | нет (локальный процесс Copilot CLI) | нет (`copilot login`) |
 | `copilot-api` | copilot-api | `https://api.github.com` (GitHub API; хост Copilot определяется автоматически) | `COPILOT_GITHUB_TOKEN` |
 | `openai` | openai | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
 | `openai-responses` | openai-responses | `https://api.openai.com/v1` | `OPENAI_RESPONSES_API_KEY` |
@@ -79,25 +78,6 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 `providers.<name>.models`, OCR выводит предупреждение в stderr; провайдер
 проверит модель при отправке запроса. Для пользовательских провайдеров действуют
 прежние правила проверки `--model`.
-
-### GitHub Copilot CLI через ACP
-
-Провайдер `copilot-acp` запускает отдельный процесс GitHub Copilot CLI для
-каждого ответа. Установите Copilot CLI и войдите в систему перед выбором
-провайдера:
-
-```bash
-copilot login
-ocr config set provider copilot-acp
-ocr config set model auto
-ocr llm test
-```
-
-OCR не хранит токен Copilot и не запускает команду входа. Провайдер не принимает
-`api_key`, URL, HTTP-заголовки, коды повторных попыток или параметры AWS. Каждый
-запрос использует отдельный временный рабочий каталог и применяет ID модели
-или селектор `auto` из списка `session/new`. Если `copilot` отсутствует в `PATH`, задайте путь
-к исполняемому файлу в `OCR_COPILOT_ACP_COMMAND`.
 
 ### GitHub Copilot API (экспериментально)
 

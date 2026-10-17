@@ -18,7 +18,6 @@ func TestNormalizeProtocol(t *testing.T) {
 		{"canonical anthropic is idempotent", ProtocolAnthropic, ProtocolAnthropic},
 		{"canonical openai is idempotent", ProtocolOpenAIChatCompletions, ProtocolOpenAIChatCompletions},
 		{"canonical openai-responses is idempotent", ProtocolOpenAIResponses, ProtocolOpenAIResponses},
-		{"canonical copilot-acp is idempotent", ProtocolCopilotACP, ProtocolCopilotACP},
 		{"anthropic case-insensitive", "ANTHROPIC", ProtocolAnthropic},
 		{"openai-responses case-insensitive", "OpenAI-Responses", ProtocolOpenAIResponses},
 		{"unknown passthrough lowercased", "gRPC", "grpc"},
@@ -43,7 +42,6 @@ func TestValidateProtocol(t *testing.T) {
 		{"anthropic ok", ProtocolAnthropic, false, ""},
 		{"openai ok", ProtocolOpenAIChatCompletions, false, ""},
 		{"openai-responses ok", ProtocolOpenAIResponses, false, ""},
-		{"copilot-acp ok", ProtocolCopilotACP, false, ""},
 		{"empty rejected", "", true, "unsupported protocol"},
 		{"grpc rejected", "grpc", true, "unsupported protocol"},
 		{"anthropic-vertex rejected", "anthropic-vertex", true, "unsupported protocol"},
@@ -75,7 +73,7 @@ func TestValidateProtocol_ErrorMessageListsAllProtocols(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	for _, sub := range []string{ProtocolAnthropic, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses, ProtocolAnthropicBedrock, ProtocolCopilotACP} {
+	for _, sub := range []string{ProtocolAnthropic, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses, ProtocolAnthropicBedrock} {
 		if !strings.Contains(err.Error(), sub) {
 			t.Errorf("error %q should mention %q", err.Error(), sub)
 		}
@@ -94,7 +92,6 @@ func TestProtocolCredentialSources(t *testing.T) {
 		{ProtocolOpenAIChatCompletions, CredentialAPIKey, true, false, false},
 		{ProtocolOpenAIResponses, CredentialAPIKey, true, false, false},
 		{ProtocolAnthropicBedrock, CredentialAWS, false, true, false},
-		{ProtocolCopilotACP, CredentialCopilotCLI, false, false, true},
 	}
 	for _, test := range tests {
 		t.Run(test.protocol, func(t *testing.T) {

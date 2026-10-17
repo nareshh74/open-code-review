@@ -44,7 +44,6 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 |---|---|---|---|
 | `anthropic` | anthropic | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
 | `bedrock` | anthropic-bedrock | `aws_region` から決定 | —（AWS 認証情報チェーン） |
-| `copilot-acp` | copilot-acp | なし（ローカル Copilot CLI プロセス） | なし（`copilot login`） |
 | `copilot-api` | copilot-api | `https://api.github.com`（GitHub API。Copilot ホストは自動検出） | `COPILOT_GITHUB_TOKEN` |
 | `openai` | openai | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
 | `openai-responses` | openai-responses | `https://api.openai.com/v1` | `OPENAI_RESPONSES_API_KEY` |
@@ -73,24 +72,6 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 の制限には使われません。組み込み一覧にも `providers.<name>.models` にもないモデルを
 指定すると、OCR は stderr に警告を出します。モデルはリクエスト送信時に provider が
 検証します。カスタム provider には従来の `--model` 検証ルールが適用されます。
-
-### ACP 経由で GitHub Copilot CLI を使う
-
-`copilot-acp` は補完ごとに、ログイン済みの GitHub Copilot CLI プロセスを 1 つ
-起動します。Copilot CLI をインストールしてログインした後、provider を選択します。
-
-```bash
-copilot login
-ocr config set provider copilot-acp
-ocr config set model auto
-ocr llm test
-```
-
-OCR は Copilot token を保存せず、ログインコマンドも実行しません。この provider は
-`api_key`、URL、HTTP header、retry code、AWS 設定を受け付けません。各リクエストは
-独立した一時作業ディレクトリを使い、`session/new` が返した model ID または `auto`
-セレクターを適用します。`copilot` が `PATH` にない場合は、
-`OCR_COPILOT_ACP_COMMAND` に実行ファイルのパスを設定します。
 
 ### GitHub Copilot API（実験的）
 

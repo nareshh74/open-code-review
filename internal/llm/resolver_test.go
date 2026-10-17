@@ -9,7 +9,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -1441,63 +1440,6 @@ func TestResolveEndpointWithModelOverride_AllBuiltInProvidersAcceptUnlistedModel
 	}
 }
 
-func TestResolveEndpoint_CopilotACPUsesCLIOwnedCredentials(t *testing.T) {
-	clearAllEnv(t)
-	path, _ := writeResolverConfig(t, configFile{
-		Provider: "copilot-acp",
-		Providers: map[string]providerEntryConfig{
-			"copilot-acp": {Model: "gpt-5.6-sol"},
-		},
-	})
-	ep, err := ResolveEndpoint(path)
-	if err != nil {
-		t.Fatalf("ResolveEndpoint: %v", err)
-	}
-	want := ResolvedEndpoint{
-		Model:       "gpt-5.6-sol",
-		Provider:    "copilot-acp",
-		Protocol:    ProtocolCopilotACP,
-		Source:      "provider:copilot-acp",
-		Credentials: CredentialCopilotCLI,
-	}
-	if !reflect.DeepEqual(ep, want) {
-		t.Errorf("endpoint = %#v, want %#v", ep, want)
-	}
-}
-
-func TestResolveEndpoint_CopilotACPRejectsHTTPAndAWSConfiguration(t *testing.T) {
-	clearAllEnv(t)
-	tests := []struct {
-		name  string
-		entry providerEntryConfig
-		want  string
-	}{
-		{"api key", providerEntryConfig{APIKey: "secret"}, "does not accept api_key"},
-		{"key command", providerEntryConfig{APIKeyCmd: "echo secret"}, "does not accept api_key_cmd"},
-		{"URL", providerEntryConfig{URL: "https://example.com"}, "does not accept url"},
-		{"auth header", providerEntryConfig{AuthHeader: "authorization"}, "does not accept auth_header"},
-		{"extra body", providerEntryConfig{ExtraBody: map[string]any{"x": 1}}, "does not accept extra_body"},
-		{"extra headers", providerEntryConfig{ExtraHeaders: map[string]string{"X-Test": "1"}}, "does not accept extra_headers"},
-		{"retry codes", providerEntryConfig{RetryCodes: []int{429}}, "does not accept retry_codes"},
-		{"AWS", providerEntryConfig{AWSRegion: "us-west-2"}, "does not accept aws_profile or aws_region"},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			test.entry.Model = "gpt-5.6-sol"
-			path, _ := writeResolverConfig(t, configFile{
-				Provider: "copilot-acp",
-				Providers: map[string]providerEntryConfig{
-					"copilot-acp": test.entry,
-				},
-			})
-			_, err := ResolveEndpoint(path)
-			if err == nil || !strings.Contains(err.Error(), test.want) {
-				t.Fatalf("error = %v, want substring %q", err, test.want)
-			}
-		})
-	}
-}
-
 func TestResolveEndpoint_CopilotAPIUsesGitHubCredentialEnv(t *testing.T) {
 	clearAllEnv(t)
 	t.Setenv("COPILOT_GITHUB_TOKEN", " gho_env ")
@@ -1556,23 +1498,6 @@ func TestResolveEndpoint_PresetCannotSwitchToCopilotAPI(t *testing.T) {
 	_, err := ResolveEndpoint(path)
 	if err == nil || !strings.Contains(err.Error(), "cannot change protocol") {
 		t.Fatalf("error = %v", err)
-	}
-}
-
-func TestResolveEndpoint_CustomProviderRejectsCopilotACP(t *testing.T) {
-	clearAllEnv(t)
-	path, _ := writeResolverConfig(t, configFile{
-		Provider: "custom-copilot",
-		CustomProviders: map[string]providerEntryConfig{
-			"custom-copilot": {
-				Protocol: ProtocolCopilotACP,
-				Model:    "gpt-5.6-sol",
-			},
-		},
-	})
-	_, err := ResolveEndpoint(path)
-	if err == nil || !strings.Contains(err.Error(), "available only through its built-in provider") {
-		t.Fatalf("error = %v, want built-in-only error", err)
 	}
 }
 

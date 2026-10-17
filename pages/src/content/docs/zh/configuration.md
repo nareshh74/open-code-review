@@ -43,7 +43,6 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 |---|---|---|---|
 | `anthropic` | anthropic | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
 | `bedrock` | anthropic-bedrock | 由 `aws_region` 决定 | —（AWS 凭证链） |
-| `copilot-acp` | copilot-acp | 不适用（本地 Copilot CLI 进程） | 不适用（`copilot login`） |
 | `copilot-api` | copilot-api | `https://api.github.com`（GitHub API，Copilot 主机自动发现） | `COPILOT_GITHUB_TOKEN` |
 | `openai` | openai | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
 | `openai-responses` | openai-responses | `https://api.openai.com/v1` | `OPENAI_RESPONSES_API_KEY` |
@@ -72,23 +71,6 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 如果指定的模型既不在内置列表中，也不在 `providers.<name>.models` 中，OCR 会向
 stderr 输出警告；发送请求时由 provider 验证模型。自定义 provider 仍遵循原有的
 `--model` 校验规则。
-
-### 通过 ACP 使用 GitHub Copilot CLI
-
-`copilot-acp` 每次补全都会启动一个已登录的 GitHub Copilot CLI 进程。先安装
-Copilot CLI 并登录，再选择该 provider：
-
-```bash
-copilot login
-ocr config set provider copilot-acp
-ocr config set model auto
-ocr llm test
-```
-
-OCR 不保存 Copilot token，也不会运行登录命令。该 provider 不接受 `api_key`、URL、
-HTTP header、重试状态码或 AWS 设置。每个请求使用独立的临时工作目录，并应用
-`session/new` 返回的 model ID 或 `auto` 选择器。若 `copilot` 不在 `PATH` 中，请将
-`OCR_COPILOT_ACP_COMMAND` 设置为可执行文件路径。
 
 ### GitHub Copilot API（实验性）
 
