@@ -236,12 +236,16 @@ func applyCustomProviderConfig(configPath string, cfg *Config, result providerTU
 // the save. apiKeyCmd is trimmed because the resolver treats a whitespace-only
 // command as unset, so without this a command of "   " would satisfy the check
 // here and then fail resolution with "no api_key or api_key_cmd configured".
+//
+// An ambient-auth provider has no credential to save at all: demanding one would
+// make it impossible to configure, since the credentials live in the AWS chain
+// rather than the config file.
 func checkAPIKeyRequirement(providerName, apiKey, apiKeyCmd string, preset llm.Provider, isPreset bool) error {
 	if apiKey != "" || strings.TrimSpace(apiKeyCmd) != "" {
 		return nil
 	}
 	switch {
-	case isPreset && llm.CredentialSourceForProtocol(preset.Protocol) != llm.CredentialAPIKey:
+	case isPreset && preset.AmbientAuth:
 		return nil
 	case isPreset && preset.EnvVar != "":
 		if os.Getenv(preset.EnvVar) == "" {

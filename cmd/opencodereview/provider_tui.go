@@ -794,7 +794,9 @@ func (m providerTUIModel) updateCustomModelInput(key string, msg tea.KeyPressMsg
 		m.customModel = false
 		m.modelInput.Blur()
 		m.modelInput.SetValue("")
-		m.refreshModelSelectionForCustom(name)
+		// Reposition the cursor on the first newly-added model so the user
+		// can see what just landed.
+		m.refreshModelSelectionForCustom()
 		return m, nil
 	default:
 		var cmd tea.Cmd
@@ -922,17 +924,15 @@ func (m *providerTUIModel) beginManualTokenReplace() {
 	m.manualTokenInput.SetValue("")
 }
 
-// refreshModelSelectionForCustom moves the cursor onto the model the user just
-// added. Landing on "Enter custom model name..." instead would make Enter reopen
-// the input, so a provider without preset models could never be confirmed.
-func (m *providerTUIModel) refreshModelSelectionForCustom(name string) {
+// refreshModelSelectionForCustom moves the cursor to "Enter custom model name..."
+// after the user adds models via the input field.
+func (m *providerTUIModel) refreshModelSelectionForCustom() {
+	models := m.models()
 	m.modelIdx = 0
-	for i, model := range m.models() {
-		if model == name {
-			m.modelIdx = i
-			return
-		}
+	if len(models) == 0 {
+		return
 	}
+	m.modelIdx = len(models) // land on "Enter custom model name..."
 }
 
 func officialProviderEnvKeySet(p llm.Provider) bool {
@@ -998,7 +998,9 @@ func (m providerTUIModel) apiKeyStepCanConfirm() (ok bool, errMsg string) {
 	}
 	if m.activeTab == tabOfficial {
 		p := m.currentProvider()
-		if llm.CredentialSourceForProtocol(p.Protocol) != llm.CredentialAPIKey {
+		if p.AmbientAuth {
+			// Reachable when an existing config is edited: an empty key is the
+			// correct state for a provider that signs from the AWS chain.
 			return true, ""
 		}
 		if officialProviderEnvKeySet(p) {
@@ -1867,8 +1869,10 @@ func (m providerTUIModel) handleEnter() (tea.Model, tea.Cmd) {
 			m.formError = err.Error()
 			return m, nil
 		}
-		if m.activeTab == tabOfficial &&
-			llm.CredentialSourceForProtocol(m.currentProvider().Protocol) != llm.CredentialAPIKey {
+		if m.activeTab == tabOfficial && m.currentProvider().AmbientAuth {
+			// An ambient-auth provider has no key to collect, so the model step
+			// is the last one. Showing an API-key prompt that must be left blank
+			// would read as a step the user failed to complete.
 			m.formError = ""
 			m.confirmed = true
 			return m, tea.Quit

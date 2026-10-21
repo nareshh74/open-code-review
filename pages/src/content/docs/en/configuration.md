@@ -19,8 +19,7 @@ to edit it:
 ocr config provider
 ```
 
-It lets you pick a built-in or custom provider, enter an API key when required,
-choose a model, save the config, and run `ocr llm test`. To switch models later:
+It lets you pick a built-in or custom provider, enter an API key, choose a model, saves everything to the config file, and then runs `ocr llm test` once to verify the endpoint. To switch models later:
 
 ```bash
 ocr config model
@@ -39,7 +38,7 @@ ocr config set providers.anthropic.api_key sk-ant-xxxxxxxxxx
 ### Built-in providers
 
 The following providers ship with OCR, with the Base URL and protocol
-preset. Most require an API key. If
+preset — once selected, you only need to fill in the API key. If
 `providers.<name>.api_key` is unset, OCR falls back to the corresponding
 environment variable.
 
@@ -47,7 +46,6 @@ environment variable.
 |---|---|---|---|
 | `anthropic` | anthropic | `https://api.anthropic.com` | `ANTHROPIC_API_KEY` |
 | `bedrock` | anthropic-bedrock | derived from `aws_region` | — (AWS credential chain) |
-| `copilot-api` | copilot-api | `https://api.github.com` (GitHub API; Copilot host discovered) | `COPILOT_GITHUB_TOKEN` |
 | `openai` | openai | `https://api.openai.com/v1` | `OPENAI_API_KEY` |
 | `openai-responses` | openai-responses | `https://api.openai.com/v1` | `OPENAI_RESPONSES_API_KEY` |
 | `openrouter` | openai | `https://openrouter.ai/api/v1` | `OPENROUTER_API_KEY` |
@@ -76,40 +74,6 @@ restrictions on `--model`. An override absent from both the built-in list and
 `providers.<name>.models` produces a warning on stderr; the provider validates
 the model when the request is sent. Custom providers retain their existing
 `--model` validation rules.
-
-### GitHub Copilot API (experimental)
-
-The `copilot-api` provider calls GitHub Copilot's chat completions service
-directly. It relies on private, undocumented GitHub interfaces that may change
-or stop working without notice, and it is not supported by GitHub.
-
-OCR asks the GitHub API in `url` (`https://api.github.com` by default) for the
-account's Copilot endpoint through `/copilot_internal/user`, then sends chat
-completions there with the GitHub OAuth token as the bearer. The token is sent
-only to that GitHub API and to the reported Copilot host, which must be an
-`api*.githubcopilot.com` host or a host inside your GHE.com tenant. The
-credential comes from `api_key`, `api_key_cmd`, or `COPILOT_GITHUB_TOKEN`; OCR
-never reads `GH_TOKEN`, `GITHUB_TOKEN`, or `gh auth token` on its own.
-
-```bash
-ocr config set provider copilot-api
-ocr config set providers.copilot-api.api_key_cmd "gh auth token"
-ocr config set model <chat-completions-model-id>
-ocr llm test
-```
-
-For a GHE.com account, point both the credential and `url` at the tenant:
-
-```bash
-ocr config set providers.copilot-api.api_key_cmd "gh auth token -h <tenant>.ghe.com"
-ocr config set providers.copilot-api.url https://api.<tenant>.ghe.com
-```
-
-No models are suggested, so set a model your account can use with chat
-completions. `url` accepts only `https://api.github.com` or
-`https://api.<tenant>.ghe.com`; `auth_header`, protocol overrides, and AWS
-settings are rejected. A rejected credential (HTTP 401) fails the request
-without replaying it.
 
 ### Overriding a built-in provider's Base URL
 
@@ -235,7 +199,7 @@ in the FAQ before picking one.
 
 ### Timeouts
 
-Each LLM completion has a timeout, defaulting to **300 seconds**.
+Each LLM request has an HTTP timeout, defaulting to **300 seconds**.
 Slow local models (or large files) can need more. Three knobs, in
 increasing scope:
 
