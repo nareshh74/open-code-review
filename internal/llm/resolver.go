@@ -27,17 +27,19 @@ type ResolvedEndpoint struct {
 	Source       string            // human-readable config source label
 	ExtraBody    map[string]any    // vendor-specific request body fields
 	ExtraHeaders map[string]string // extra HTTP headers for the LLM request
-	// Timeout is the per-completion timeout; 0 means use the client default (5 min).
+	// Timeout is the per-request HTTP timeout; 0 means use the client default (5 min).
 	// Only config file (llm/provider sections) and OCR_LLM_TIMEOUT env var can set this.
 	// tryCCEnv and tryShellRC always leave it at 0 since those sources have no timeout
 	// knob; users can still override via OCR_LLM_TIMEOUT.
 	Timeout    time.Duration
 	RetryCodes []int // additional HTTP status codes that trigger exponential-backoff retry
 
-	// Credentials identifies who owns authentication. API-key providers require
-	// URL and Token. AWS and Copilot CLI transports supply their own connection
-	// and authentication state.
-	Credentials CredentialSource
+	// AmbientAuth marks an endpoint that carries no token and needs no base
+	// URL, because the transport supplies both — AWS SigV4 signing derives the
+	// host from the region and the credentials from the environment's own
+	// chain. Completeness checks must treat an empty URL and Token as valid for
+	// these; requiring either would reject a correctly configured endpoint.
+	AmbientAuth bool
 
 	// AWSProfile and AWSRegion override the ambient AWS chain for SigV4
 	// providers. Empty means "let the AWS SDK decide".
@@ -137,12 +139,9 @@ func ResolveEndpointWithOptions(configPath string, opts ResolveOptions) (Resolve
 		if err != nil {
 			return ResolvedEndpoint{}, fmt.Errorf("resolve %s: %w", strategy.name, err)
 		}
-		credentials := ep.Credentials
-		if credentials == "" {
-			credentials = CredentialSourceForProtocol(ep.Protocol)
-		}
-		complete := ep.Model != "" &&
-			(credentials != CredentialAPIKey || (ep.URL != "" && ep.Token != ""))
+		// An ambient-auth endpoint is complete without a URL or token: the
+		// transport supplies both. Everything else still needs all three.
+		complete := ep.Model != "" && (ep.AmbientAuth || (ep.URL != "" && ep.Token != ""))
 		if ok && complete {
 			return finalizeResolvedEndpoint(strategy.name, ep, env), nil
 		}
@@ -183,9 +182,6 @@ func finalizeResolvedEndpoint(source string, ep ResolvedEndpoint, env envOverrid
 		ep.Source = source
 	}
 	ep.Model = stripModelSuffix(ep.Model)
-	if ep.Credentials == "" {
-		ep.Credentials = CredentialSourceForProtocol(ep.Protocol)
-	}
 	if env.hasTimeout {
 		ep.Timeout = env.timeout
 	}
@@ -242,12 +238,14 @@ func validateTimeoutSec(sec int) (time.Duration, error) {
 	return ValidateTimeoutSec(sec)
 }
 
-func errProviderOnlyProtocol(key, protocol string) error {
-	if protocol == ProtocolAnthropicBedrock {
-		return fmt.Errorf("%s cannot be %q: bedrock derives its host from aws_region and signs with the AWS credential chain, so it has no use for a url or a token; configure it as a provider instead (\"provider\": \"bedrock\")",
-			key, protocol)
-	}
-	return fmt.Errorf("%s cannot be %q: this transport is available only through its built-in provider", key, protocol)
+// errBedrockNotConfigurable explains why the two url+token strategies reject the
+// bedrock protocol. Both describe a single HTTP endpoint and carry no place for
+// a region or a profile, and bedrock uses neither the url nor the token they do
+// carry. Accepting the value would switch transports and silently ignore the
+// rest of the block, so it is refused at the point it is read.
+func errBedrockNotConfigurable(key string) error {
+	return fmt.Errorf("%s cannot be %q: bedrock derives its host from aws_region and signs with the AWS credential chain, so it has no use for a url or a token; configure it as a provider instead (\"provider\": \"bedrock\")",
+		key, ProtocolAnthropicBedrock)
 }
 
 // validateEndpointURL reports URL parse failures before the SDK can turn them
@@ -288,8 +286,8 @@ func tryOCREnv(modelOverride string) (ResolvedEndpoint, bool, error) {
 		if err := ValidateProtocol(protocol); err != nil {
 			return ResolvedEndpoint{}, false, fmt.Errorf("OCR environment: %w", err)
 		}
-		if ProtocolIsBuiltInOnly(protocol) || protocol == ProtocolAnthropicBedrock {
-			return ResolvedEndpoint{}, false, fmt.Errorf("OCR environment: %w", errProviderOnlyProtocol(envOCRLLMProtocol, protocol))
+		if protocol == ProtocolAnthropicBedrock {
+			return ResolvedEndpoint{}, false, fmt.Errorf("OCR environment: %w", errBedrockNotConfigurable(envOCRLLMProtocol))
 		}
 	}
 	if protocol == "" {
@@ -332,7 +330,7 @@ type llmFileConfig struct {
 	AuthTokenCmd string            `json:"auth_token_cmd,omitempty"` // shell command whose stdout is the auth token; used when auth_token is empty
 	Protocol     string            `json:"protocol,omitempty"`       // anthropic|openai|openai-responses; takes priority over use_anthropic
 	UseAnthropic *bool             `json:"use_anthropic,omitempty"`  // pointer to distinguish unset from false; legacy fallback when protocol is empty
-	TimeoutSec   int               `json:"timeout_sec,omitempty"`    // per-completion timeout in seconds
+	TimeoutSec   int               `json:"timeout_sec,omitempty"`    // per-request HTTP timeout in seconds
 	ExtraBody    map[string]any    `json:"extra_body,omitempty"`
 	ExtraHeaders map[string]string `json:"extra_headers,omitempty"`
 	RetryCodes   []int             `json:"retry_codes,omitempty"`
@@ -347,13 +345,13 @@ type providerEntryConfig struct {
 	Model        string            `json:"model,omitempty"`
 	Models       []string          `json:"models,omitempty"`
 	AuthHeader   string            `json:"auth_header,omitempty"`
-	TimeoutSec   int               `json:"timeout_sec,omitempty"` // per-completion timeout in seconds
+	TimeoutSec   int               `json:"timeout_sec,omitempty"` // per-request HTTP timeout in seconds
 	ExtraBody    map[string]any    `json:"extra_body,omitempty"`
 	ExtraHeaders map[string]string `json:"extra_headers,omitempty"`
 	RetryCodes   []int             `json:"retry_codes,omitempty"`
 
-	// AWSProfile and AWSRegion apply to providers that sign with SigV4
-	// (currently bedrock). Both are optional: without them the standard
+	// AWSProfile and AWSRegion apply to ambient-auth providers that sign with
+	// SigV4 (currently bedrock). Both are optional: without them the standard
 	// AWS chain decides, same as any other AWS tool. Setting them in config
 	// makes a review run reproducible without exporting AWS_PROFILE first.
 	AWSProfile string `json:"aws_profile,omitempty"`
@@ -472,11 +470,6 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 			if err := ValidateProtocol(normalized); err != nil {
 				return ResolvedEndpoint{}, false, fmt.Errorf("provider %q: %w", cfg.Provider, err)
 			}
-			if normalized != protocol && (ProtocolIsBuiltInOnly(normalized) || ProtocolIsBuiltInOnly(protocol)) {
-				// Provider identity selects the credential owner, so a raw
-				// GitHub credential must never reach another transport.
-				return ResolvedEndpoint{}, false, fmt.Errorf("provider %q cannot change protocol from %q to %q", cfg.Provider, protocol, normalized)
-			}
 			protocol = normalized
 		}
 	} else {
@@ -492,37 +485,29 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 		if err := ValidateProtocol(normalized); err != nil {
 			return ResolvedEndpoint{}, false, fmt.Errorf("custom provider %q: %w", cfg.Provider, err)
 		}
-		if ProtocolIsBuiltInOnly(normalized) {
-			return ResolvedEndpoint{}, false, fmt.Errorf("custom provider %q: %w", cfg.Provider, errProviderOnlyProtocol("protocol", normalized))
-		}
-		if ProtocolRequiresURL(normalized) && entry.URL == "" {
+		if normalized != ProtocolAnthropicBedrock && entry.URL == "" {
 			return ResolvedEndpoint{}, false, fmt.Errorf("custom provider %q requires a url field for protocol %q", cfg.Provider, normalized)
 		}
 		url = entry.URL
 		protocol = normalized
 	}
 
-	credentials := CredentialSourceForProtocol(protocol)
-	if protocol == ProtocolCopilotAPI {
-		// url names the GitHub API the credential belongs to; GitHub then
-		// reports the Copilot host, so only GitHub hosts are accepted.
-		switch {
-		case entry.URL != "":
-			if err := ValidateCopilotGitHubURL(entry.URL); err != nil {
-				return ResolvedEndpoint{}, false, fmt.Errorf("provider %q: %w", cfg.Provider, err)
-			}
-		}
-		switch {
-		case entry.AuthHeader != "":
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept auth_header", cfg.Provider)
-		case entry.AWSProfile != "" || entry.AWSRegion != "":
-			return ResolvedEndpoint{}, false, fmt.Errorf("provider %q does not accept aws_profile or aws_region", cfg.Provider)
-		}
-	}
+	// Ambient auth follows the protocol actually in force, which is why this is
+	// resolved after the override above rather than read off the preset. A preset
+	// declares ambient auth (AmbientAuth), but an entry may override the preset's
+	// protocol: a bedrock preset switched to "openai" speaks a protocol with no
+	// SigV4 signing and needs a token like anything else. Conversely an entry
+	// that selects the bedrock protocol explicitly signs its requests whatever
+	// the preset says.
+	ambientAuth := protocol == ProtocolAnthropicBedrock ||
+		(isPreset && preset.AmbientAuth && entry.Protocol == "")
 
 	// No credential at all is an error, and it is reported before api_key_cmd
 	// runs: only the command's *execution* is deferred, not the emptiness check.
-	if apiKey == "" && apiKeyCmd == "" && credentials == CredentialAPIKey {
+	// An ambient-auth provider is the exception — it has no key to configure,
+	// since credentials come from the environment's own chain and the request is
+	// signed rather than bearing a token.
+	if apiKey == "" && apiKeyCmd == "" && !ambientAuth {
 		return ResolvedEndpoint{}, false, fmt.Errorf("provider %q has no api_key or api_key_cmd configured and no environment variable fallback found", cfg.Provider)
 	}
 
@@ -542,10 +527,10 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 
 	// Preset lists can lag provider catalogs, so they guide interactive selection
 	// without preventing a per-run override. A custom provider's configured list
-	// remains a constraint except with provider-owned authentication.
+	// remains a constraint except with ambient, account-scoped authentication.
 	if modelOverride != "" {
 		if len(availableModels) > 0 && !ModelListContains(availableModels, modelOverride) {
-			if !isPreset && credentials == CredentialAPIKey {
+			if !isPreset && !ambientAuth {
 				return ResolvedEndpoint{}, false, fmt.Errorf(
 					"model %q is not available for provider %q; available models: %s",
 					modelOverride,
@@ -603,9 +588,11 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 
 	// Single api_key_cmd resolution site for both preset and custom providers,
 	// as late as possible: everything above can fail without running the
-	// command. Provider-owned authentication skips it entirely.
+	// command. An ambient-auth provider skips it entirely — the request is
+	// signed, so the command's output would be discarded, and running it anyway
+	// means a real 1Password / Touch ID prompt for a value nothing consumes.
 	// For everyone else a failing command is a hard error.
-	if apiKey == "" && apiKeyCmd != "" && credentials == CredentialAPIKey {
+	if apiKey == "" && apiKeyCmd != "" && !ambientAuth {
 		resolved, err := resolveKeyCmd(apiKeyCmd, fmt.Sprintf("api_key_cmd for provider %q", cfg.Provider))
 		if err != nil {
 			return ResolvedEndpoint{}, false, err
@@ -613,11 +600,6 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 		apiKey = resolved
 	}
 
-	var awsProfile, awsRegion string
-	if ProtocolAcceptsAWSOptions(protocol) {
-		awsProfile = entry.AWSProfile
-		awsRegion = entry.AWSRegion
-	}
 	return ResolvedEndpoint{
 		URL:          url,
 		Token:        apiKey,
@@ -630,9 +612,9 @@ func tryProviderConfig(cfg configFile, modelOverride string) (ResolvedEndpoint, 
 		ExtraHeaders: extraHeaders,
 		Timeout:      timeout,
 		RetryCodes:   retryCodes,
-		Credentials:  credentials,
-		AWSProfile:   awsProfile,
-		AWSRegion:    awsRegion,
+		AmbientAuth:  ambientAuth,
+		AWSProfile:   entry.AWSProfile,
+		AWSRegion:    entry.AWSRegion,
 	}, true, nil
 }
 
@@ -674,8 +656,8 @@ func tryLegacyLlmConfig(cfg configFile, modelOverride string) (ResolvedEndpoint,
 		if err := ValidateProtocol(protocol); err != nil {
 			return ResolvedEndpoint{}, false, fmt.Errorf("OCR config file: %w", err)
 		}
-		if ProtocolIsBuiltInOnly(protocol) || protocol == ProtocolAnthropicBedrock {
-			return ResolvedEndpoint{}, false, fmt.Errorf("OCR config file: %w", errProviderOnlyProtocol("llm.protocol", protocol))
+		if protocol == ProtocolAnthropicBedrock {
+			return ResolvedEndpoint{}, false, fmt.Errorf("OCR config file: %w", errBedrockNotConfigurable("llm.protocol"))
 		}
 	}
 	if protocol == "" {

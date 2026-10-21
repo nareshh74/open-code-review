@@ -14,7 +14,8 @@ import (
 // against these constants exclusively.
 //
 // Naming convention: <vendor>-<flavor>. New built-in protocols should add a
-// constant and protocol definition here, then add a case to NewLLMClient.
+// constant here, extend ValidateProtocol's whitelist, and add a case to
+// NewLLMClient.
 const (
 	// ProtocolAnthropic is the Anthropic Messages API spoken directly to
 	// api.anthropic.com (or a compatible gateway).
@@ -34,81 +35,7 @@ const (
 	// official SDK's bedrock middleware performs that rewriting, so this
 	// shares the Anthropic client rather than reimplementing the protocol.
 	ProtocolAnthropicBedrock = "anthropic-bedrock"
-	// ProtocolCopilotAPI is the experimental, undocumented GitHub Copilot chat
-	// completions service. A GitHub credential is exchanged for a short-lived
-	// Copilot token before each session.
-	ProtocolCopilotAPI = "copilot-api"
 )
-
-// CredentialSource identifies who owns authentication for a protocol.
-type CredentialSource string
-
-const (
-	CredentialAPIKey CredentialSource = "api-key"
-	CredentialAWS    CredentialSource = "aws"
-)
-
-type protocolDefinition struct {
-	name              string
-	credentials       CredentialSource
-	requiresURL       bool
-	builtInOnly       bool
-	acceptsAWSOptions bool
-}
-
-var protocolDefinitions = []protocolDefinition{
-	{name: ProtocolAnthropic, credentials: CredentialAPIKey, requiresURL: true},
-	{name: ProtocolOpenAIChatCompletions, credentials: CredentialAPIKey, requiresURL: true},
-	{name: ProtocolOpenAIResponses, credentials: CredentialAPIKey, requiresURL: true},
-	{name: ProtocolAnthropicBedrock, credentials: CredentialAWS, acceptsAWSOptions: true},
-	{name: ProtocolCopilotAPI, credentials: CredentialAPIKey, builtInOnly: true},
-}
-
-func lookupProtocol(name string) (protocolDefinition, bool) {
-	for _, definition := range protocolDefinitions {
-		if definition.name == name {
-			return definition, true
-		}
-	}
-	return protocolDefinition{}, false
-}
-
-// CredentialSourceForProtocol returns the authentication owner for a canonical
-// protocol. Unknown protocols use API-key requirements until validation rejects
-// them.
-func CredentialSourceForProtocol(protocol string) CredentialSource {
-	if definition, ok := lookupProtocol(protocol); ok {
-		return definition.credentials
-	}
-	return CredentialAPIKey
-}
-
-// ProtocolRequiresURL reports whether a protocol addresses an HTTP endpoint.
-func ProtocolRequiresURL(protocol string) bool {
-	definition, ok := lookupProtocol(protocol)
-	return !ok || definition.requiresURL
-}
-
-// ProtocolAcceptsAWSOptions reports whether aws_profile and aws_region apply.
-func ProtocolAcceptsAWSOptions(protocol string) bool {
-	definition, ok := lookupProtocol(protocol)
-	return ok && definition.acceptsAWSOptions
-}
-
-// ProtocolIsBuiltInOnly reports whether custom and legacy endpoint
-// configuration must reject the protocol.
-func ProtocolIsBuiltInOnly(protocol string) bool {
-	definition, ok := lookupProtocol(protocol)
-	return ok && definition.builtInOnly
-}
-
-func supportedProtocols() []string {
-	protocols := make([]string, len(protocolDefinitions))
-	for i, definition := range protocolDefinitions {
-		protocols[i] = definition.name
-	}
-	return protocols
-}
 
 // NormalizeProtocol canonicalizes protocol names. It is case-insensitive and
 // trims whitespace. Empty string is returned as-is (the caller decides the
@@ -128,21 +55,18 @@ func NormalizeProtocol(raw string) string {
 		return ProtocolOpenAIResponses
 	case ProtocolAnthropicBedrock:
 		return ProtocolAnthropicBedrock
-	case ProtocolCopilotAPI:
-		return ProtocolCopilotAPI
 	default:
 		return normalized
 	}
 }
 
-// ValidateProtocol accepts canonical protocol names and rejects everything else.
+// ValidateProtocol accepts the four canonical protocol names and rejects
+// everything else.
 func ValidateProtocol(p string) error {
-	if _, ok := lookupProtocol(p); ok {
+	switch p {
+	case ProtocolAnthropic, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses, ProtocolAnthropicBedrock:
 		return nil
+	default:
+		return fmt.Errorf("unsupported protocol %q; supported protocols are %q, %q, %q, %q", p, ProtocolAnthropic, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses, ProtocolAnthropicBedrock)
 	}
-	protocols := supportedProtocols()
-	for i := range protocols {
-		protocols[i] = fmt.Sprintf("%q", protocols[i])
-	}
-	return fmt.Errorf("unsupported protocol %q; supported protocols are %s", p, strings.Join(protocols, ", "))
 }

@@ -14,7 +14,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "baseUrl": "https://api.anthropic.com",
     "authHeader": "x-api-key",
     "envVar": "ANTHROPIC_API_KEY",
-    "credentials": "api-key",
     "models": [
       "claude-opus-5",
       "claude-sonnet-5",
@@ -30,7 +29,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://qianfan.baidubce.com/v2",
     "envVar": "QIANFAN_API_KEY",
-    "credentials": "api-key",
     "models": [
       "ernie-5.1",
       "ernie-5.0",
@@ -50,7 +48,7 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "anthropic-bedrock",
     "baseUrl": "",
     "envVar": "",
-    "credentials": "aws",
+    "ambientAuth": true,
     "models": [
       "us.anthropic.claude-opus-5",
       "us.anthropic.claude-sonnet-5",
@@ -63,21 +61,11 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     ]
   },
   {
-    "name": "copilot-api",
-    "displayName": "GitHub Copilot API (experimental)",
-    "protocol": "copilot-api",
-    "baseUrl": "https://api.github.com",
-    "envVar": "COPILOT_GITHUB_TOKEN",
-    "credentials": "api-key",
-    "models": []
-  },
-  {
     "name": "dashscope",
     "displayName": "Alibaba DashScope API",
     "protocol": "openai",
     "baseUrl": "https://dashscope.aliyuncs.com/compatible-mode/v1",
     "envVar": "DASHSCOPE_API_KEY",
-    "credentials": "api-key",
     "models": [
       "qwen3.8-max",
       "qwen3.7-max",
@@ -97,7 +85,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1",
     "envVar": "DASHSCOPE_TOKENPLAN_KEY",
-    "credentials": "api-key",
     "models": [
       "qwen3.8-max",
       "qwen3.7-max",
@@ -121,7 +108,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.deepseek.com",
     "envVar": "DEEPSEEK_API_KEY",
-    "credentials": "api-key",
     "models": [
       "deepseek-v4-pro",
       "deepseek-flash"
@@ -133,7 +119,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.edenai.run/v3",
     "envVar": "EDENAI_API_KEY",
-    "credentials": "api-key",
     "models": [
       "anthropic/claude-opus-4-5",
       "anthropic/claude-sonnet-4-5",
@@ -153,7 +138,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
     "envVar": "GEMINI_API_KEY",
-    "credentials": "api-key",
     "models": [
       "gemini-3-flash-preview",
       "gemini-3.1-flash-lite",
@@ -169,7 +153,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.lkeap.cloud.tencent.com/plan/v3",
     "envVar": "TENCENT_HUNYUAN_TOKENPLAN_KEY",
-    "credentials": "api-key",
     "models": [
       "hy3"
     ]
@@ -180,7 +163,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://spark-api-open.xf-yun.com/v1",
     "envVar": "SPARK_API_KEY",
-    "credentials": "api-key",
     "models": [
       "4.0Ultra",
       "generalv3.5",
@@ -196,7 +178,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.moonshot.cn/v1",
     "envVar": "MOONSHOT_API_KEY",
-    "credentials": "api-key",
     "models": [
       "kimi-k3",
       "kimi-k2.7-code",
@@ -211,7 +192,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.moonshot.ai/v1",
     "envVar": "MOONSHOT_GLOBAL_API_KEY",
-    "credentials": "api-key",
     "models": [
       "kimi-k3",
       "kimi-k2.7-code",
@@ -226,7 +206,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "http://localhost:4000/v1",
     "envVar": "LITELLM_API_KEY",
-    "credentials": "api-key",
     "models": [
       "anthropic/claude-sonnet-4-6",
       "anthropic/claude-opus-4-6",
@@ -248,7 +227,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.xiaomimimo.com/v1",
     "envVar": "MIMO_API_KEY",
-    "credentials": "api-key",
     "models": [
       "mimo-v2.5-pro",
       "mimo-v2.5"
@@ -260,7 +238,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.minimax.io/v1",
     "envVar": "MINIMAX_GLOBAL_API_KEY",
-    "credentials": "api-key",
     "models": [
       "MiniMax-M3",
       "MiniMax-M2.7",
@@ -275,7 +252,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.minimaxi.com/v1",
     "envVar": "MINIMAX_API_KEY",
-    "credentials": "api-key",
     "models": [
       "MiniMax-M3",
       "MiniMax-M2.7",
@@ -290,7 +266,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.mistral.ai/v1",
     "envVar": "MISTRAL_API_KEY",
-    "credentials": "api-key",
     "models": [
       "codestral-latest",
       "mistral-large-latest",
@@ -303,7 +278,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.novita.ai/openai",
     "envVar": "NOVITA_API_KEY",
-    "credentials": "api-key",
     "models": [
       "moonshotai/kimi-k3",
       "zai-org/glm-5.2",
@@ -316,7 +290,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://ollama.com/v1",
     "envVar": "OLLAMA_API_KEY",
-    "credentials": "api-key",
     "models": [
       "deepseek-v4-flash",
       "deepseek-v4-pro",
@@ -344,7 +317,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.openai.com/v1",
     "envVar": "OPENAI_API_KEY",
-    "credentials": "api-key",
     "models": [
       "gpt-5.5",
       "gpt-5.4",
@@ -357,7 +329,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai-responses",
     "baseUrl": "https://api.openai.com/v1",
     "envVar": "OPENAI_RESPONSES_API_KEY",
-    "credentials": "api-key",
     "models": [
       "gpt-5.6-sol",
       "gpt-5.6-terra",
@@ -370,7 +341,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://openrouter.ai/api/v1",
     "envVar": "OPENROUTER_API_KEY",
-    "credentials": "api-key",
     "models": [
       "anthropic/claude-fable-5.1",
       "openai/gpt-5.6-sol",
@@ -385,7 +355,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.siliconflow.com/v1",
     "envVar": "SILICONFLOW_GLOBAL_API_KEY",
-    "credentials": "api-key",
     "models": [
       "deepseek-ai/DeepSeek-V4-Pro",
       "deepseek-ai/DeepSeek-V4-Flash",
@@ -400,7 +369,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.siliconflow.cn/v1",
     "envVar": "SILICONFLOW_API_KEY",
-    "credentials": "api-key",
     "models": [
       "deepseek-ai/DeepSeek-V4-Pro",
       "deepseek-ai/DeepSeek-V4-Flash",
@@ -415,7 +383,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://tokenhub.tencentmaas.com/v1",
     "envVar": "TENCENT_TOKENHUB_API_KEY",
-    "credentials": "api-key",
     "models": [
       "deepseek-v4-pro",
       "deepseek-v4-flash",
@@ -436,7 +403,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://ark.cn-beijing.volces.com/api/v3",
     "envVar": "ARK_API_KEY",
-    "credentials": "api-key",
     "models": [
       "doubao-seed-evolving",
       "doubao-seed-2-1-pro-260628",
@@ -452,7 +418,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://api.x.ai/v1",
     "envVar": "XAI_API_KEY",
-    "credentials": "api-key",
     "models": [
       "grok-4.6",
       "grok-4.5",
@@ -465,7 +430,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://open.bigmodel.cn/api/paas/v4",
     "envVar": "Z_AI_API_KEY",
-    "credentials": "api-key",
     "models": [
       "glm-5.3",
       "glm-5.2",
@@ -481,7 +445,6 @@ export const PROVIDER_PRESETS: OcrProviderPreset[] = [
     "protocol": "openai",
     "baseUrl": "https://open.bigmodel.cn/api/coding/paas/v4",
     "envVar": "Z_AI_CODING_API_KEY",
-    "credentials": "api-key",
     "models": [
       "glm-5.3",
       "glm-5.2",

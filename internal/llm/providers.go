@@ -17,7 +17,6 @@ import (
 //   - ProtocolOpenAIChatCompletions ("openai")
 //   - ProtocolOpenAIResponses ("openai-responses")
 //   - ProtocolAnthropicBedrock ("anthropic-bedrock")
-//   - ProtocolCopilotAPI ("copilot-api")
 //
 // To add a built-in provider that speaks a different protocol, set Protocol
 // accordingly and ensure NewLLMClient has a matching case.
@@ -29,6 +28,13 @@ type Provider struct {
 	AuthHeader  string // Anthropic-only; empty for OpenAI-compatible
 	EnvVar      string // environment variable name for API key fallback
 	Models      []string
+
+	// AmbientAuth marks a provider whose credentials come from the
+	// environment's own chain rather than an api_key — AWS SigV4, for
+	// instance. The resolver skips its api_key requirement for these, because
+	// there is no key to configure and demanding one would make the provider
+	// impossible to use.
+	AmbientAuth bool
 }
 
 // After modifying the built-in provider registry, run `go generate ./internal/llm`
@@ -66,6 +72,7 @@ var registry = []Provider{
 		Name:        "bedrock",
 		DisplayName: "AWS Bedrock (Anthropic models)",
 		Protocol:    ProtocolAnthropicBedrock,
+		AmbientAuth: true,
 		Models: []string{
 			"us.anthropic.claude-opus-5",
 			"us.anthropic.claude-sonnet-5",
@@ -76,16 +83,6 @@ var registry = []Provider{
 			"global.anthropic.claude-sonnet-5",
 			"global.anthropic.claude-opus-4-8",
 		},
-	},
-	{
-		// Experimental: Copilot endpoint discovery and the completion service
-		// are private, undocumented GitHub interfaces. BaseURL is the GitHub
-		// API; set url to https://api.<tenant>.ghe.com for GHE.com accounts.
-		Name:        "copilot-api",
-		DisplayName: "GitHub Copilot API (experimental)",
-		Protocol:    ProtocolCopilotAPI,
-		BaseURL:     copilotAPIDefaultGitHubURL,
-		EnvVar:      "COPILOT_GITHUB_TOKEN",
 	},
 	{
 		Name:        "openai",

@@ -2761,7 +2761,11 @@ func TestApplyCustomProviderConfigNormalizesAuthHeader(t *testing.T) {
 
 // --- protocol normalization / openai-responses support ---
 
-func TestCpProtocols_ContainsCustomProviderProtocols(t *testing.T) {
+func TestCpProtocols_ContainsAllCanonicalNames(t *testing.T) {
+	// The Custom form offers every canonical protocol, in canonical order, so
+	// result() picks up the right string for each index. The Manual form writes
+	// llm.url + llm.auth_token and so omits bedrock, which uses neither; the two
+	// lists share their prefix, which is what keeps a single index helper honest.
 	want := []string{
 		llm.ProtocolAnthropic,
 		llm.ProtocolOpenAIChatCompletions,

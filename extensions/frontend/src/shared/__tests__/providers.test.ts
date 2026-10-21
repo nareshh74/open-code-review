@@ -2,7 +2,7 @@
 // Copyright 2026 alibaba/open-code-review Contributors
 
 import { PROVIDER_PRESETS as generatedPresets } from '../providers.generated';
-import { isPresetProvider, lookupPreset, mergeModelLists, PROVIDER_PRESETS, requiresApiKey } from '../providers';
+import { isPresetProvider, lookupPreset, mergeModelLists, PROVIDER_PRESETS, usesAmbientAuth } from '../providers';
 import { buildOfficialSaveEntries, detectInitialTab, isConfigReady } from '../configUtils';
 import { OcrConfig } from '../types';
 
@@ -47,23 +47,23 @@ describe('generated provider presets', () => {
     ]);
   });
 
-  it('preserves credential ownership and Responses protocol metadata', () => {
+  it('preserves the Bedrock authentication and Responses protocol metadata', () => {
     expect(lookupPreset('bedrock')).toMatchObject({
-      protocol: 'anthropic-bedrock', credentials: 'aws', envVar: '', baseUrl: '',
+      protocol: 'anthropic-bedrock', ambientAuth: true, envVar: '', baseUrl: '',
     });
     expect(lookupPreset('openai-responses')?.protocol).toBe('openai-responses');
     expect(lookupPreset('anthropic')?.authHeader).toBe('x-api-key');
   });
 
-  it('derives API key requirements from the effective protocol', () => {
+  it('derives ambient authentication from the effective protocol', () => {
     const bedrock = lookupPreset('bedrock');
     const openai = lookupPreset('openai');
     expect(bedrock).toBeDefined();
     expect(openai).toBeDefined();
-    expect(requiresApiKey(bedrock!)).toBe(false);
-    expect(requiresApiKey(bedrock!, 'openai')).toBe(true);
-    expect(requiresApiKey(openai!, 'anthropic-bedrock')).toBe(false);
-    expect(requiresApiKey(openai!, ' OPENAI ')).toBe(true);
+    expect(usesAmbientAuth(bedrock!)).toBe(true);
+    expect(usesAmbientAuth(bedrock!, 'openai')).toBe(false);
+    expect(usesAmbientAuth(openai!, 'anthropic-bedrock')).toBe(true);
+    expect(usesAmbientAuth(openai!, ' OPENAI ')).toBe(false);
   });
 
   it('keeps unknown providers outside the built-in preset path', () => {

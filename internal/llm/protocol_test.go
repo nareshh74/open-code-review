@@ -73,40 +73,9 @@ func TestValidateProtocol_ErrorMessageListsAllProtocols(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	for _, sub := range []string{ProtocolAnthropic, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses, ProtocolAnthropicBedrock} {
+	for _, sub := range []string{ProtocolAnthropic, ProtocolOpenAIChatCompletions, ProtocolOpenAIResponses} {
 		if !strings.Contains(err.Error(), sub) {
 			t.Errorf("error %q should mention %q", err.Error(), sub)
 		}
-	}
-}
-
-func TestProtocolCredentialSources(t *testing.T) {
-	tests := []struct {
-		protocol    string
-		credentials CredentialSource
-		requiresURL bool
-		acceptsAWS  bool
-		builtInOnly bool
-	}{
-		{ProtocolAnthropic, CredentialAPIKey, true, false, false},
-		{ProtocolOpenAIChatCompletions, CredentialAPIKey, true, false, false},
-		{ProtocolOpenAIResponses, CredentialAPIKey, true, false, false},
-		{ProtocolAnthropicBedrock, CredentialAWS, false, true, false},
-	}
-	for _, test := range tests {
-		t.Run(test.protocol, func(t *testing.T) {
-			if got := CredentialSourceForProtocol(test.protocol); got != test.credentials {
-				t.Errorf("CredentialSourceForProtocol = %q, want %q", got, test.credentials)
-			}
-			if got := ProtocolRequiresURL(test.protocol); got != test.requiresURL {
-				t.Errorf("ProtocolRequiresURL = %t, want %t", got, test.requiresURL)
-			}
-			if got := ProtocolAcceptsAWSOptions(test.protocol); got != test.acceptsAWS {
-				t.Errorf("ProtocolAcceptsAWSOptions = %t, want %t", got, test.acceptsAWS)
-			}
-			if got := ProtocolIsBuiltInOnly(test.protocol); got != test.builtInOnly {
-				t.Errorf("ProtocolIsBuiltInOnly = %t, want %t", got, test.builtInOnly)
-			}
-		})
 	}
 }

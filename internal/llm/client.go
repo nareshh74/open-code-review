@@ -467,7 +467,6 @@ func retryCodesMiddleware(codes []int) func(*http.Request, func(*http.Request) (
 // protocol dispatch (canonical names from protocol.go):
 //   - ProtocolAnthropic ("anthropic") -> AnthropicClient
 //   - ProtocolOpenAIResponses ("openai-responses") -> OpenAIResponsesClient
-//   - ProtocolCopilotAPI ("copilot-api") -> copilotAPIClient
 //   - ProtocolOpenAIChatCompletions ("openai") or anything else -> OpenAIClient
 //
 // The defensive default keeps legacy callers that somehow bypass resolver
@@ -501,8 +500,6 @@ func NewLLMClient(ep ResolvedEndpoint, collector *RetryCollector, raw *RawHolder
 		return NewAnthropicBedrockClient(cfg)
 	case ProtocolOpenAIResponses:
 		return NewOpenAIResponsesClient(cfg)
-	case ProtocolCopilotAPI:
-		return newCopilotAPIClient(cfg)
 	default:
 		return NewOpenAIClient(cfg)
 	}
