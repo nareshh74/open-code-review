@@ -19,6 +19,9 @@
   ".cxx",
   ".hpp",
   ".hxx",
+  ".cu",
+  ".cuh",
+  ".hip",
   ".cs",
   ".vb",
   ".fs",
@@ -136,5 +139,6 @@
   ".cljs",
   ".cljc",
   ".edn",
-  ".move"
+  ".move",
+  ".dhall"
 ]

@@ -266,7 +266,10 @@ OCR は [`bmatcuk/doublestar/v4`](https://pkg.go.dev/github.com/bmatcuk/doublest
 | `**/*.rs`                                       | `rust.md`                                                                                       |
 | `**/*.{cpp,cc,cxx,hpp,hxx}`                     | `cpp.md`                                                                                        |
 | `**/*.c`                                        | `c.md`                                                                                          |
+| `**/*.{cu,cuh}`                                 | `cuda_hip.md`：CUDA カーネルとヘッダー。                                                        |
+| `**/*.hip`                                      | `cuda_hip.md`：HIP（AMD ROCm）カーネル。                                                        |
 | `**/*.{py,pyi,ipynb}`                           | `python.md`: Python ソースコード。                                                              |
+| `**/*.{rb,rake}`, `**/*.gemspec`, `**/{Gemfile,Rakefile}` | `ruby.md`: Ruby のソース、Rake タスク、gemspec、Gemfile、Rakefile。 |
 | `**/*.{php,phtml}`                              | `php.md`: PHP ソースと PHP テンプレート。                                                       |
 | `**/*.proto`                                    | `protobuf.md`: Protocol Buffers のワイヤ互換性。                                                |
 | `**/*.po`                                       | `po.md`: gettext 翻訳ソースカタログ。                                                           |
@@ -277,6 +280,7 @@ OCR は [`bmatcuk/doublestar/v4`](https://pkg.go.dev/github.com/bmatcuk/doublest
 | `**/*.R`                                        | `r.md`                                                                                          |
 | `**/*.{tf,tofu,hcl,tfvars}`                     | `terraform.md`: Terraform / HCL。                                                               |
 | `**/*.bicep`                                    | `bicep.md`: Bicep（Azure）テンプレート。                                                        |
+| `**/*.dhall` | `dhall.md`: Dhall 設定言語。 |
 | `**/*.nix`                          | `nix.md`: Nix 式と flake。                                                                  |
 | `**/*.{hs,lhs}`                     | `haskell.md`: Haskell ソースコード。                                                            |
 | `**/*.{nim,nims,nimble}`            | `nim.md`: Nim ソースコードとパッケージマニフェスト。                                                        |
@@ -300,6 +304,7 @@ OCR は [`bmatcuk/doublestar/v4`](https://pkg.go.dev/github.com/bmatcuk/doublest
 | `**/*.{glsl,hlsl,wgsl,metal}`                   | `shader.md` - GLSL、HLSL、WGSL、Metal シェーダー。                                              |
 | `**/*.{ps1,psm1,psd1}`                          | `powershell.md`: PowerShell スクリプト、モジュール、データ／マニフェストファイル。              |
 | `**/*.{clj,cljs,cljc,edn}`                      | `clojure.md`: Clojure / ClojureScript ソースコードと EDN データ。 |
+| `**/*.sql`                                      | `sql.md`: SQL マイグレーションとクエリ。 |
 | _(fallback)_                                    | `default.md`                                                                                    |
 
 解決されたルール本文は、plan および main task prompt 内の `{{system_rule}}` プレースホルダーの内容になります。
