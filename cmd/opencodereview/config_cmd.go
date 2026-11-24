@@ -44,10 +44,18 @@ Examples:
 }
 
 var configSetCmd = &cobra.Command{
-	Use:     "set <key> <value>",
-	Short:   "Set a configuration value",
-	Example: "  ocr config set llm.model claude-opus-4-6\n  ocr config set provider anthropic",
-	Args:    exactArgs(2),
+	Use:   "set <key> <value>",
+	Short: "Set a configuration value",
+	Long: "Set a configuration value.\n\n" +
+		"Supported keys: " + strings.Join(supportedConfigKeys, ", ") + "\n" +
+		"Provider fields: api_key, api_key_cmd, url, protocol, model, models, auth_header, timeout_sec, extra_body, extra_headers, retry_codes, aws_region, aws_profile\n" +
+		"Protocol values: anthropic, anthropic-bedrock, openai, openai-responses\n" +
+		"MCP server fields: type, command, args, env, url, headers, tools, setup\n" +
+		"For MCP servers, args, env and tools use JSON arrays; headers use JSON objects.",
+	Example: "  ocr config set llm.model claude-opus-4-6\n" +
+		"  ocr config set llm.url https://api.anthropic.com/v1/messages\n" +
+		"  ocr config set provider anthropic",
+	Args: exactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runConfigSet(args[0], args[1])
 	},
@@ -56,8 +64,8 @@ var configSetCmd = &cobra.Command{
 var configUnsetCmd = &cobra.Command{
 	Use:     "unset <key>",
 	Short:   "Remove a configuration value",
-	Long:    "Remove a provider, custom_providers.<name>, or mcp_servers.<name>.",
-	Example: "  ocr config unset provider\n  ocr config unset custom_providers.my-provider\n  ocr config unset mcp_servers.github",
+	Long:    "Remove a provider, custom_providers.<name>, or mcp_servers.<name>; reset max_tokens or effort.",
+	Example: "  ocr config unset provider\n  ocr config unset max_tokens\n  ocr config unset effort\n  ocr config unset custom_providers.my-provider\n  ocr config unset mcp_servers.github",
 	Args:    exactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		return runConfigUnset(args[0])
@@ -698,7 +706,16 @@ func setConfigValue(cfg *Config, key, value string) error {
 		}
 		cfg.Effort = string(e)
 	case "llm.url", "llm.URL":
-		cfg.Llm.URL = value
+		// Same treatment as providers.<name>.url, so a scheme-less or padded
+		// value is refused here rather than surfacing as an opaque
+		// "unsupported protocol scheme" on the first LLM request.
+		trimmedURL := strings.TrimSpace(value)
+		if trimmedURL != "" {
+			if err := validateBaseURL(trimmedURL); err != nil {
+				return fmt.Errorf("invalid URL for %s: %w", key, err)
+			}
+		}
+		cfg.Llm.URL = trimmedURL
 	case "llm.auth_token", "llm.AuthToken":
 		cfg.Llm.AuthToken = value
 	case "llm.auth_token_cmd", "llm.AuthTokenCmd":
